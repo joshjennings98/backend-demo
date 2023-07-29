@@ -252,7 +252,7 @@ def command(index):
     if line['type'] == 'command':
         def generate():
             yield '<pre style="font-size: 18px; background-color: black; color: white;">'
-            with subprocess.Popen(line['content'], stdout=subprocess.PIPE, bufsize=1, universal_newlines=True) as p:
+            with subprocess.Popen(line['content'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1, universal_newlines=True) as p:
                 for output_line in p.stdout:
                     yield output_line.rstrip() + '\n'
                     yield '<script>window.scrollTo(0,document.body.scrollHeight);</script>'
