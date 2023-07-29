@@ -30,3 +30,4 @@ Fast long running commands like `ls -R /` are quite glitchy.
 * Move template stuff and css stuff to templates and static directories.
 * Package up the tool so it is easy to run, [see this page](http://blog.ablepear.com/2012/10/bundling-python-files-into-stand-alone.html).
 * Add release workflow and releases.
+* Improve long running fast commands (e.g. `ls -R /`), possible by caching output and reading that.
