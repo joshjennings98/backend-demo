@@ -1,0 +1,5 @@
+CMD echo Hello, world!
+TXT This is a [text](http://www.google.com) slide with a link.<br>Test<br>TEST
+CMD ping -c 4 google.com
+TXT This is another `text` slide.<br>APPLES ARE APPLY.
+CMD ls -l
