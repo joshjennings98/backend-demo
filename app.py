@@ -1,53 +1,14 @@
 from flask import Flask, render_template_string, Response, jsonify
-import argparse, re, subprocess, webbrowser
-from enum import Enum
- 
-class Tag(str, Enum):
-    COMMAND = "[COMMAND]"
-    TEXT    = "[TEXT]"
-    CODE    = "[CODE]"
-    IMAGE   = "[IMAGE]"
+import subprocess
 
-    @classmethod
-    def is_tag(cls, key):
-        return key in [member.value for member in Tag]
-    
+from utils import Tag, convert_to_html
+from config import Config
+
 app = Flask(__name__)
-
-def read_file(file_path):
-    try:
-        with open(file_path, 'r') as f:
-            return f.readlines()
-    except Exception as e:
-        print(f"Error while reading file: {e}")
-        return []
-
-def parse_commands(lines):
-    commands = []
-    current_command = None
-    current_content = []
-    for line in lines:
-        line = line.strip()
-
-        if Tag.is_tag(line):
-            if current_command:
-                commands.append({'type': current_command, 'content': current_content})
-            current_command = line
-            current_content = []
-        else:
-            current_content.append(line)
-
-    commands.append({'type': current_command, 'content': current_content})
-
-    return commands
-
-def convert_to_html(text):
-    text = re.sub(r"`(.*?)`", r"<code>\1</code>", text) # Convert backticks to <code></code>
-    text = re.sub(r"\[(.*?)\]\((.*?)\)", r'<a href="\2">\1</a>', text) # Convert markdown links to html links
-    return text
 
 @app.route('/')
 def index():
+    # Move the HTML code to a separate file in the templates directory
     return render_template_string("""
 <!DOCTYPE html>
 <html>
@@ -262,11 +223,11 @@ def index():
 
 @app.route('/commands')
 def get_commands():
-    return jsonify(commands=lines)
+    return jsonify(commands=Config.LINES)
 
 @app.route('/current_command/<int:index>')
 def current_command(index):
-    line = lines[index]
+    line = Config.LINES[index]
     if line['type'] == Tag.COMMAND:
         return line['content'][0]
     else:
@@ -274,7 +235,7 @@ def current_command(index):
 
 @app.route('/command/<int:index>')
 def command(index):
-    line = lines[index]
+    line = Config.LINES[index]
     if line['type'] == Tag.COMMAND:
         def generate():
             yield '<pre style="font-size: 18px; background-color: black; color: white;">'
@@ -292,14 +253,3 @@ def command(index):
         text_lines = [convert_to_html(line) for line in line['content'] if line != ""]
         return jsonify({'text_lines': text_lines})
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Process a commands file.')
-    parser.add_argument('file_path', type=str, help='The path to the commands file')
-    args = parser.parse_args()
-
-    lines = parse_commands(read_file(args.file_path))
-
-    port = 1337
-    webbrowser.open_new_tab(f"http://localhost:{port}")
-    app.run(port=port, debug=False)
-    
