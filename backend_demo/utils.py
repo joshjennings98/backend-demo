@@ -25,14 +25,13 @@ def parse_commands(lines):
     current_command = None
     current_content = []
     for line in lines:
-        line = line.strip()
-
-        if Tag.is_tag(line):
+        stripped = line.strip()
+        if Tag.is_tag(stripped):
             if current_command:
                 commands.append({'type': current_command, 'content': current_content})
-            current_command = line
+            current_command = stripped
             current_content = []
-        else:
+        elif stripped != "":
             current_content.append(line)
 
     commands.append({'type': current_command, 'content': current_content})

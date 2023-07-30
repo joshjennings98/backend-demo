@@ -1,8 +1,8 @@
 from flask import Flask, render_template_string, Response, jsonify
 import subprocess
 
-from utils import Tag, convert_to_html
-from config import Config
+from .utils import Tag, convert_to_html
+from .config import Config
 
 app = Flask(__name__)
 
@@ -39,14 +39,11 @@ def index():
                 display: none;
                 width: 100%;
             }
-    
-            pre {
-                font-family: Monospace;
-                padding: 10px;
-                border: black 10px;
-                font-size: 24px;
-            }
 
+            img {
+                object-fit: contain;
+            }
+    
             #text-output {
                 box-sizing: border-box;
                 font-size: 36px;
@@ -72,6 +69,12 @@ def index():
                 font-family: Monospace;
                 background-color: #f0f0f0;
                 padding: 3px;
+            }
+        
+            pre {
+                font-family: Monospace;
+                font-size: 24px;
+                text-align: left;
             }
         </style>
     </head>
@@ -239,7 +242,7 @@ def command(index):
     if line['type'] == Tag.COMMAND:
         def generate():
             yield '<pre style="font-size: 18px; background-color: black; color: white;">'
-            with subprocess.Popen(line['content'][0].split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1, universal_newlines=True) as p:
+            with subprocess.Popen(line['content'][0], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1, universal_newlines=True, shell=True) as p:
                 for output_line in p.stdout:
                     yield output_line.rstrip() + '\n'
                     yield '<script>window.scrollTo(0,document.body.scrollHeight);</script>'
@@ -252,4 +255,3 @@ def command(index):
     else:
         text_lines = [convert_to_html(line) for line in line['content'] if line != ""]
         return jsonify({'text_lines': text_lines})
-

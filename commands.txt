@@ -1,6 +1,9 @@
 [COMMAND]
 echo Hello, world!
 
+[COMMAND]
+echo '{ "apple":"orange" }' | jq
+
 [TEXT]
 This is a [text](http://www.google.com) slide with a link.
 Test
@@ -13,7 +16,8 @@ https://upload.wikimedia.org/wikipedia/en/7/73/Hyperion_cover.jpg
 ping -c 4 google.com
 
 [CODE]
-func aaaaa
+func aaaaa():
+	fmt.Println(222)
 
 [TEXT]
 This is another `text` slide.

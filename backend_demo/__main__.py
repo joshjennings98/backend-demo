@@ -1,11 +1,12 @@
 import argparse
+import sys
 import webbrowser
 
-from app import app
-from utils import read_file, parse_commands
-from config import Config
+from .app import app
+from .utils import read_file, parse_commands
+from .config import Config
 
-if __name__ == "__main__":
+def main(args=None):
     parser = argparse.ArgumentParser(description='Process a commands file.')
     parser.add_argument('file_path', type=str, help='The path to the commands file')
     args = parser.parse_args()
@@ -14,3 +15,6 @@ if __name__ == "__main__":
 
     webbrowser.open_new_tab(f"http://localhost:{Config.PORT}")
     app.run(port=Config.PORT, debug=False)
+
+if __name__ == "__main__":
+    sys.exit(main())
