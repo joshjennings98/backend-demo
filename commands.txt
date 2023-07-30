@@ -1,5 +1,23 @@
-CMD echo Hello, world!
-TXT This is a [text](http://www.google.com) slide with a link.<br>Test<br>TEST
-CMD ping -c 4 google.com
-TXT This is another `text` slide.<br>APPLES ARE APPLY.
-CMD ls -l
+[COMMAND]
+echo Hello, world!
+
+[TEXT]
+This is a [text](http://www.google.com) slide with a link.
+Test
+TEST
+
+[IMAGE]
+https://upload.wikimedia.org/wikipedia/en/7/73/Hyperion_cover.jpg
+
+[COMMAND]
+ping -c 4 google.com
+
+[CODE]
+func aaaaa
+
+[TEXT]
+This is another `text` slide.
+APPLES ARE APPLY.
+
+[COMMAND]
+ls -l
