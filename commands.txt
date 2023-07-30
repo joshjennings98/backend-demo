@@ -16,8 +16,13 @@ https://upload.wikimedia.org/wikipedia/en/7/73/Hyperion_cover.jpg
 ping -c 4 google.com
 
 [CODE]
-func aaaaa():
-	fmt.Println(222)
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("hello world")
+}
 
 [TEXT]
 This is another `text` slide.

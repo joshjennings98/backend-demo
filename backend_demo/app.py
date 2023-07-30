@@ -71,10 +71,12 @@ def index():
                 padding: 3px;
             }
         
-            pre {
+            pre, pre code {
                 font-family: Monospace;
                 font-size: 24px;
                 text-align: left;
+                line-height: 0.7em;
+                tab-size: 4;
             }
         </style>
     </head>
@@ -132,6 +134,7 @@ def index():
                     const data = await response.text();
                     outputDiv.innerHTML = data;
                     if (commands[index].type === '"""+Tag.CODE+"""') {
+                        outputDiv.style.height = ``;
                         hljs.highlightAll();
                     }
                     outputDiv.style.display = 'block';
@@ -249,7 +252,7 @@ def command(index):
             yield '</pre>'
         return Response(generate(), mimetype='text/html')
     if line['type'] == Tag.CODE:
-        return "<pre><code>" + '\n'.join(line['content']) + "</code></pre>"
+        return "<pre><code>" + '\n'.join(line['content']).strip() + "</code></pre>"
     if line['type'] == Tag.IMAGE:
         return "<img src='" + ''.join(line['content']) + "'>"
     else:

@@ -32,7 +32,9 @@ with multiple lines
 https://upload.wikimedia.org/wikipedia/en/7/73/Hyperion_cover.jpg
 
 [CODE]
-print("I am a code block, I will be automatically syntax highlighted with hightlight.js")
+def main():
+    print("I am a code block")
+    print("I will be automatically syntax highlighted with hightlight.js")
 ```
 
 Pass it as an argument to `backend_demo`:
@@ -50,3 +52,4 @@ Fast long running commands like `ls -R /` are quite glitchy.
 * Move template stuff and css stuff to templates and static directories.
 * Don't use `shell=True` but retain the functionality that provides (pipes and redirects etc.)
 * Improve long running fast commands (e.g. `ls -R /`), possible by caching output and reading that.
+* Get rid of all the horrible string manipulation.

@@ -31,7 +31,7 @@ def parse_commands(lines):
                 commands.append({'type': current_command, 'content': current_content})
             current_command = stripped
             current_content = []
-        elif stripped != "":
+        elif stripped != "" or current_command == Tag.CODE:
             current_content.append(line)
 
     commands.append({'type': current_command, 'content': current_content})
