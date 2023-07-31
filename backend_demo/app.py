@@ -17,8 +17,8 @@ def index():
     )
 
 @app.route('/pages')
-def get_commands():
-    return jsonify(commands=Config.LINES)
+def get_pages():
+    return jsonify(pages=Config.LINES)
 
 @app.route('/command/<int:index>')
 def current_command(index):
@@ -26,7 +26,7 @@ def current_command(index):
     return line['content'][0] if line['type'] == Tag.COMMAND else ""
 
 @app.route('/pages/<int:index>')
-def command(index):
+def page(index):
     line = Config.LINES[index]
     if line['type'] == Tag.COMMAND:
         def generate():

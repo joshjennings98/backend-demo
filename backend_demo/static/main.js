@@ -1,43 +1,43 @@
 const iframe = document.getElementById('command-display');
 const outputDiv = document.getElementById('text-output');
-const commandSelect = document.getElementById('command-select');
+const pageSelect = document.getElementById('page-select');
 const currentCommand = document.getElementById('current-command');
 
-let commands = [];
+let pages = [];
 let textLines = [];
 let lineIndex = 0;
 let displayedLines = [];
 let index = 0;
 let navigationDirection = 'forward';
 
-async function fetchCommands() {
+async function fetchPages() {
     try {
         const response = await fetch('/pages');
         const data = await response.json();
-        commands = data.commands;
+        pages = data.pages;
 
         // Generate select options
-        commands.forEach((command, i) => {
+        pages.forEach((_, i) => {
             const option = document.createElement('option');
             option.value = i;
-            option.textContent = `Slide ${i + 1}/${commands.length}`;
-            commandSelect.appendChild(option);
+            option.textContent = `Slide ${i + 1}/${pages.length}`;
+            pageSelect.appendChild(option);
         });
 
-        loadCommand();
+        loadPage();
     } catch (error) {
-        console.error("Error fetching commands: ", error);
+        console.error("Error fetching pages: ", error);
     }
 }
 
-async function loadCommand() {
+async function loadPage() {
     try {
         // Fetch and display current command
         const commandResponse = await fetch(`/command/${index}`);
         const commandData = await commandResponse.text();
         currentCommand.textContent = commandData;
 
-        if (commands[index].type === commandTag) {
+        if (pages[index].type === commandTag) {
             outputDiv.style.display = 'none';
             iframe.src = `/pages/${index}`;
             iframe.style.display = 'block';
@@ -45,13 +45,13 @@ async function loadCommand() {
             textLines = [];
             displayedLines = [];
             lineIndex = 0;
-        } else if (commands[index].type === codeTag || commands[index].type === imageTag) {
+        } else if (pages[index].type === codeTag || pages[index].type === imageTag) {
             iframe.style.display = 'none';
             currentCommand.style.display = 'none';
             const response = await fetch(`/pages/${index}`);
             const data = await response.text();
             outputDiv.innerHTML = data;
-            if (commands[index].type === codeTag) {
+            if (pages[index].type === codeTag) {
                 outputDiv.style.height = ``;
                 hljs.highlightAll();
             }
@@ -76,15 +76,15 @@ async function loadCommand() {
             outputDiv.style.display = 'block';
         }
 
-        commandSelect.value = index;
+        pageSelect.value = index;
     } catch (error) {
-        console.error("Error loading command: ", error);
+        console.error("Error loading page: ", error);
     }
 }
 
-commandSelect.addEventListener('change', () => {
-    index = Number(commandSelect.value);
-    loadCommand().catch(console.error);
+pageSelect.addEventListener('change', () => {
+    index = Number(pageSelect.value);
+    loadPage().catch(console.error);
 });
 
 document.body.addEventListener('mousedown', (event) => {
@@ -110,31 +110,31 @@ document.body.addEventListener('contextmenu', (event) => {
     event.preventDefault();
 });
 
-// Fetch commands on load
-fetchCommands().catch(console.error);
+// Fetch pages on load
+fetchPages().catch(console.error);
 
 // Right click to go backwards
 function handleRightClick() {
-    if (commands[index].type === textTag && displayedLines.length > 1) {
+    if (pages[index].type === textTag && displayedLines.length > 1) {
         displayedLines.pop();
         lineIndex--;
         outputDiv.innerHTML = displayedLines.join('<br><br><br>');
     } else if (index > 0) {
         index--;
         navigationDirection = 'backward';
-        loadCommand().catch(console.error);
+        loadPage().catch(console.error);
     }
 }
 
 // Left click to go forwards
 function handleLeftClick() {
-    if (commands[index].type === textTag && lineIndex < textLines.length - 1) {
+    if (pages[index].type === textTag && lineIndex < textLines.length - 1) {
         lineIndex++;
         displayedLines.push(textLines[lineIndex]);
         outputDiv.innerHTML = displayedLines.join('<br><br><br>');
-    } else if (index < commands.length - 1) {
+    } else if (index < pages.length - 1) {
         index++;
         navigationDirection = 'forward';
-        loadCommand().catch(console.error);
+        loadPage().catch(console.error);
     }
 }
