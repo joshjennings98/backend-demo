@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Backend Demo</title>
+        <base target="_blank">
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.3.1/styles/default.min.css">
+        <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    </head>
+    <body>
+        <div id="controls">
+            <select id="command-select"></select>
+        </div>
+        <main id="app">  
+            <div id="current-command"></div>
+            <iframe id="command-display" frameBorder="0"></iframe>
+            <div id="text-output"></div>
+        </main>
+        <script type="text/javascript">
+            const commandTag = "{{ command_tag }}";
+            const textTag = "{{ text_tag }}";
+            const imageTag = "{{ image_tag }}";
+            const codeTag = "{{ code_tag }}";
+        </script>
+        <script src="{{ url_for('static', filename='main.js') }}"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.3.1/highlight.min.js"></script>
+    </body>
+</html>

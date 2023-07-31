@@ -49,7 +49,5 @@ Fast long running commands like `ls -R /` are quite glitchy.
 
 ## To Do
 
-* Move template stuff and css stuff to templates and static directories.
 * Don't use `shell=True` but retain the functionality that provides (pipes and redirects etc.)
 * Improve long running fast commands (e.g. `ls -R /`), possible by caching output and reading that.
-* Get rid of all the horrible string manipulation.
