@@ -1,4 +1,4 @@
-# Backend Demos Script
+# Backend Demo Presnetation Tool
 
 Present backend demos in a powerpoint-like format.
 
@@ -49,5 +49,5 @@ Fast long running commands like `ls -R /` are quite glitchy.
 
 ## To Do
 
-* Don't use `shell=True` but retain the functionality that provides (pipes and redirects etc.)
-* Improve long running fast commands (e.g. `ls -R /`), possible by caching output and reading that.
+* Don't use `shell=True` ([for security reasons](https://cwe.mitre.org/data/definitions/78.html)) but retain the functionality that provides (pipes and redirects etc.)
+* Improve long running fast commands (e.g. `ls -R /`), possibly by caching output and reading that.
