@@ -24,19 +24,21 @@ async function fetchCommands() {
             commandSelect.appendChild(option);
         });
 
-        await loadCommand();
+        loadCommand();
     } catch (error) {
-        console.error('Error:', error);
+        console.error("Error fetching commands: ", error);
     }
 }
 
 async function loadCommand() {
     try {
-        outputDiv.style.display = 'none';
-        iframe.style.display = 'none';
-        currentCommand.style.display = 'none';
+        // Fetch and display current command
+        const commandResponse = await fetch(`/command/${index}`);
+        const commandData = await commandResponse.text();
+        currentCommand.textContent = commandData;
 
         if (commands[index].type === commandTag) {
+            outputDiv.style.display = 'none';
             iframe.src = `/pages/${index}`;
             iframe.style.display = 'block';
             currentCommand.style.display = 'block';
@@ -44,6 +46,8 @@ async function loadCommand() {
             displayedLines = [];
             lineIndex = 0;
         } else if (commands[index].type === codeTag || commands[index].type === imageTag) {
+            iframe.style.display = 'none';
+            currentCommand.style.display = 'none';
             const response = await fetch(`/pages/${index}`);
             const data = await response.text();
             outputDiv.innerHTML = data;
@@ -53,6 +57,8 @@ async function loadCommand() {
             }
             outputDiv.style.display = 'block';
         } else {
+            iframe.style.display = 'none';
+            currentCommand.style.display = 'none';
             const response = await fetch(`/pages/${index}`);
             const data = await response.json();
             textLines = data.text_lines;
@@ -71,14 +77,8 @@ async function loadCommand() {
         }
 
         commandSelect.value = index;
-        currentCommand.textContent = "";
-
-        // Fetch and display current command
-        const commandResponse = await fetch(`/command/${index}`);
-        const commandData = await commandResponse.text();
-        currentCommand.textContent = commandData;
     } catch (error) {
-        console.error('Error:', error);
+        console.error("Error loading command: ", error);
     }
 }
 
@@ -111,38 +111,30 @@ document.body.addEventListener('contextmenu', (event) => {
 });
 
 // Fetch commands on load
-fetchCommands();
+fetchCommands().catch(console.error);
 
 // Right click to go backwards
 function handleRightClick() {
-    try {
-        if (commands[index].type === textTag && displayedLines.length > 1) {
-            displayedLines.pop();
-            lineIndex--;
-            outputDiv.innerHTML = displayedLines.join('<br><br><br>');
-        } else if (index > 0) {
-            index--;
-            navigationDirection = 'backward';
-            loadCommand().catch(console.error);
-        }
-    } catch (error) {
-        console.error('Error:', error);
+    if (commands[index].type === textTag && displayedLines.length > 1) {
+        displayedLines.pop();
+        lineIndex--;
+        outputDiv.innerHTML = displayedLines.join('<br><br><br>');
+    } else if (index > 0) {
+        index--;
+        navigationDirection = 'backward';
+        loadCommand().catch(console.error);
     }
 }
 
 // Left click to go forwards
 function handleLeftClick() {
-    try {
-        if (commands[index].type === textTag && lineIndex < textLines.length - 1) {
-            lineIndex++;
-            displayedLines.push(textLines[lineIndex]);
-            outputDiv.innerHTML = displayedLines.join('<br><br><br>');
-        } else if (index < commands.length - 1) {
-            index++;
-            navigationDirection = 'forward';
-            loadCommand().catch(console.error);
-        }
-    } catch (error) {
-        console.error('Error:', error);
+    if (commands[index].type === textTag && lineIndex < textLines.length - 1) {
+        lineIndex++;
+        displayedLines.push(textLines[lineIndex]);
+        outputDiv.innerHTML = displayedLines.join('<br><br><br>');
+    } else if (index < commands.length - 1) {
+        index++;
+        navigationDirection = 'forward';
+        loadCommand().catch(console.error);
     }
 }
