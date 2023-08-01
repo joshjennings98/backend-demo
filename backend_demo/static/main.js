@@ -32,6 +32,9 @@ async function fetchPages() {
 
 async function loadPage() {
     try {
+        // 'about:blank' is always blank so we can use it to clear the iframe (prevents ghosting during command switch)
+        iframe.src = "about:blank"
+
         // Fetch and display current command
         const commandResponse = await fetch(`/command/${index}`);
         const commandData = await commandResponse.text();
