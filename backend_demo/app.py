@@ -43,6 +43,6 @@ def page(index):
     if line['type'] == Tag.IMAGE:
         content = ''.join(line['content'])
         return f"<img src='{content}'>"
-    else:
-        text_lines = [convert_to_html(line) for line in line['content'] if line]
-        return jsonify({'text_lines': text_lines})
+    
+    content = [convert_to_html(line) for line in line['content'] if line]
+    return jsonify({'content': content})

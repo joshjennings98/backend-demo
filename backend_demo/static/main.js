@@ -64,7 +64,7 @@ async function loadPage() {
             currentCommand.style.display = 'none';
             const response = await fetch(`/pages/${index}`);
             const data = await response.json();
-            textLines = data.text_lines;
+            textLines = data.content;
             if (navigationDirection === 'backward') {
                 // If we're navigating backward, display all lines
                 lineIndex = textLines.length - 1;
@@ -101,9 +101,9 @@ document.body.addEventListener('mousedown', (event) => {
         target = target.parentNode;
     }
 
-    if (event.button === 2) { // Right-click
+    if (event.button === 2) {
         handleRightClick();
-    } else if (event.button === 0) { // Left-click
+    } else if (event.button === 0) {
         handleLeftClick();
     }
 });
