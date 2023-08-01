@@ -23,7 +23,7 @@ def get_pages():
 @app.route('/command/<int:index>')
 def current_command(index):
     line = Config.LINES[index]
-    return line['content'][0] if line['type'] == Tag.COMMAND else ""
+    return '<br>'.join(line['content']) if line['type'] == Tag.COMMAND else ""
 
 @app.route('/pages/<int:index>')
 def page(index):
@@ -31,7 +31,7 @@ def page(index):
     if line['type'] == Tag.COMMAND:
         def generate():
             yield '<pre style="font-size: 18px; background-color: black; color: white;">'
-            with subprocess.Popen(line['content'][0], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1, universal_newlines=True, shell=True) as p:
+            with subprocess.Popen(''.join(line['content']), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1, universal_newlines=True, shell=True) as p:
                 for output_line in p.stdout:
                     yield f"{output_line.rstrip()}\n"
                     yield '<script>window.scrollTo(0,document.body.scrollHeight);</script>'
@@ -44,5 +44,5 @@ def page(index):
         content = ''.join(line['content'])
         return f"<img src='{content}'>"
     else:
-        text_lines = [convert_to_html(line) for line in line['content'] if line != ""]
+        text_lines = [convert_to_html(line) for line in line['content'] if line]
         return jsonify({'text_lines': text_lines})

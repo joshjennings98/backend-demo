@@ -38,7 +38,7 @@ img {
 #current-command {
     display: none;
     font-family: Monospace;
-    text-align: center;
+    text-align: left;
     padding: 10px;
     background-color: black;
     color: white;

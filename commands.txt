@@ -1,5 +1,12 @@
+[TEXT]
+This is a presentation
+
 [COMMAND]
-echo Hello, world!
+echo Hello \
+World.
+
+echo -n "bbbbbb\nbbb\n"
+date
 
 [COMMAND]
 echo '{ "apple":"orange" }' | jq

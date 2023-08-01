@@ -35,7 +35,7 @@ async function loadPage() {
         // Fetch and display current command
         const commandResponse = await fetch(`/command/${index}`);
         const commandData = await commandResponse.text();
-        currentCommand.textContent = commandData;
+        currentCommand.innerHTML = commandData;
 
         if (pages[index].type === commandTag) {
             outputDiv.style.display = 'none';
