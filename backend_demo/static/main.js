@@ -85,6 +85,30 @@ async function loadPage() {
     }
 }
 
+function pageBackwards() {
+    if (pages[index].type === textTag && displayedLines.length > 1) {
+        displayedLines.pop();
+        lineIndex--;
+        outputDiv.innerHTML = displayedLines.join('<br><br><br>');
+    } else if (index > 0) {
+        index--;
+        navigationDirection = 'backward';
+        loadPage().catch(console.error);
+    }
+}
+
+function pageForwards() {
+    if (pages[index].type === textTag && lineIndex < textLines.length - 1) {
+        lineIndex++;
+        displayedLines.push(textLines[lineIndex]);
+        outputDiv.innerHTML = displayedLines.join('<br><br><br>');
+    } else if (index < pages.length - 1) {
+        index++;
+        navigationDirection = 'forward';
+        loadPage().catch(console.error);
+    }
+}
+
 pageSelect.addEventListener('change', () => {
     index = Number(pageSelect.value);
     loadPage().catch(console.error);
@@ -101,43 +125,23 @@ document.body.addEventListener('mousedown', (event) => {
         target = target.parentNode;
     }
 
-    if (event.button === 2) {
-        handleRightClick();
-    } else if (event.button === 0) {
-        handleLeftClick();
+    if (event.button === 0) { // Left click
+        pageForwards();
+    } else if (event.button === 2) { // Right click
+        pageBackwards();
     }
 });
 
-// Prevent the context menu from showing on right-click
+document.body.addEventListener('keydown', (event) => {
+    if (event.key === "ArrowRight") {
+        pageForwards();
+    } else if (event.key === "ArrowLeft") {
+        pageBackwards();
+    }
+});
+
 document.body.addEventListener('contextmenu', (event) => {
-    event.preventDefault();
+    event.preventDefault(); // Prevent the context menu from showing on right-click
 });
 
-// Fetch pages on load
-fetchPages().catch(console.error);
-
-// Right click to go backwards
-function handleRightClick() {
-    if (pages[index].type === textTag && displayedLines.length > 1) {
-        displayedLines.pop();
-        lineIndex--;
-        outputDiv.innerHTML = displayedLines.join('<br><br><br>');
-    } else if (index > 0) {
-        index--;
-        navigationDirection = 'backward';
-        loadPage().catch(console.error);
-    }
-}
-
-// Left click to go forwards
-function handleLeftClick() {
-    if (pages[index].type === textTag && lineIndex < textLines.length - 1) {
-        lineIndex++;
-        displayedLines.push(textLines[lineIndex]);
-        outputDiv.innerHTML = displayedLines.join('<br><br><br>');
-    } else if (index < pages.length - 1) {
-        index++;
-        navigationDirection = 'forward';
-        loadPage().catch(console.error);
-    }
-}
+fetchPages().catch(console.error); // Fetch pages on load
