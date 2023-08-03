@@ -1,6 +1,6 @@
 html, body {
     width: 99%;
-    height: 95%;
+    height: 99%;
     padding: 0;
 }
 
@@ -44,6 +44,16 @@ img {
     color: white;
     font-size: 24px;
     margin-bottom: 20px;
+}
+
+.command-control {
+    padding: 10px;
+}
+
+#command-control-wrapper {
+    display: flex;
+    justify-content: space-between;
+    margin: 20px;
 }
 
 code {

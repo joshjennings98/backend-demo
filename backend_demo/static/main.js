@@ -1,6 +1,8 @@
 const iframe = document.getElementById('command-display');
 const outputDiv = document.getElementById('text-output');
 const pageSelect = document.getElementById('page-select');
+const commandControlWrapper = document.getElementById('command-control-wrapper');
+const refreshCheckbox = document.getElementById('auto-refresh-command');
 const currentCommand = document.getElementById('current-command');
 
 let pages = [];
@@ -9,6 +11,7 @@ let lineIndex = 0;
 let displayedLines = [];
 let index = 0;
 let navigationDirection = 'forward';
+var myInterval;
 
 async function fetchPages() {
     try {
@@ -34,6 +37,8 @@ async function loadPage() {
     try {
         // 'about:blank' is always blank so we can use it to clear the iframe (prevents ghosting during command switch)
         iframe.src = "about:blank"
+        refreshCheckbox.checked = false;
+        clearInterval(myInterval); 
 
         // Fetch and display current command
         const commandResponse = await fetch(`/command/${index}`);
@@ -42,8 +47,8 @@ async function loadPage() {
 
         if (pages[index].type === commandTag) {
             outputDiv.style.display = 'none';
-            iframe.src = `/pages/${index}`;
             iframe.style.display = 'block';
+            commandControlWrapper.style.display = 'block';
             currentCommand.style.display = 'block';
             textLines = [];
             displayedLines = [];
@@ -51,6 +56,7 @@ async function loadPage() {
         } else if (pages[index].type === codeTag || pages[index].type === imageTag) {
             iframe.style.display = 'none';
             currentCommand.style.display = 'none';
+            commandControlWrapper.style.display = 'none';
             const response = await fetch(`/pages/${index}`);
             const data = await response.text();
             outputDiv.innerHTML = data;
@@ -62,6 +68,7 @@ async function loadPage() {
         } else {
             iframe.style.display = 'none';
             currentCommand.style.display = 'none';
+            commandControlWrapper.style.display = 'none';
             const response = await fetch(`/pages/${index}`);
             const data = await response.json();
             textLines = data.content;
@@ -109,6 +116,18 @@ function pageForwards() {
     }
 }
 
+function runCommand() {
+    iframe.src = `/pages/${index}`;
+}
+
+refreshCheckbox.addEventListener("change", function() {
+    if (this.checked) {
+        myInterval = setInterval(runCommand, 4000);
+    } else {
+        clearInterval(myInterval); 
+    }
+});
+
 pageSelect.addEventListener('change', () => {
     index = Number(pageSelect.value);
     loadPage().catch(console.error);
@@ -119,7 +138,7 @@ document.body.addEventListener('mousedown', (event) => {
     let target = event.target;
 
     while (target != null) {
-        if (target === controlsDiv || (target.tagName != null && target.tagName.toLowerCase() === "a")) {
+        if (target === controlsDiv || target === commandControlWrapper || (target.tagName != null && target.tagName.toLowerCase() === "a")) {
             return;
         }
         target = target.parentNode;
@@ -137,6 +156,8 @@ document.body.addEventListener('keydown', (event) => {
         pageForwards();
     } else if (event.key === "ArrowLeft") {
         pageBackwards();
+    } else if (event.key === " " && pages[index].type === commandTag) {
+        runCommand();
     }
 });
 

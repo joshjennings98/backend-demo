@@ -14,6 +14,13 @@
             <div id="current-command"></div>
             <iframe id="command-display" frameBorder="0"></iframe>
             <div id="text-output"></div>
+            <div id="command-control-wrapper">
+                <button class="command-control" onclick="runCommand()">Run Command</button>&nbsp;&nbsp;
+                <div class="command-control">
+                    <input type="checkbox" id="auto-refresh-command">
+                    <label for="auto-refresh-command" title="Automatically re-run command every four seconds">Refresh</label>
+                </div>
+            </div>
         </main>
         <script type="text/javascript">
             const commandTag = "{{ command_tag }}";
