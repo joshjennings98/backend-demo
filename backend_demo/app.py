@@ -30,9 +30,12 @@ def page(index):
     line = Config.LINES[index]
     if line['type'] == Tag.COMMAND:
         def generate():
-            yield '<pre style="font-size: 18px; background-color: black; color: white;">'
+            unstarted = True
             with subprocess.Popen(''.join(line['content']), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1, universal_newlines=True, shell=True) as p:
                 for output_line in p.stdout:
+                    if unstarted: # yield start of pre once
+                        yield '<pre style="font-size: 18px; background-color: black; color: white;">'
+                        unstarted = False
                     yield f"{output_line.rstrip()}\n"
                     yield '<script>window.scrollTo(0,document.body.scrollHeight);</script>'
             yield '</pre>'

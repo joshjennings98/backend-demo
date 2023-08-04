@@ -43,9 +43,14 @@ Pass it as an argument to `backend_demo`:
 backend_demo commands.txt
 ```
 
+Use the mouse button to go forward and back or select a slide via the dropdown menu.
+
+Alternatively use the arrow keys for forward and back and the space bar to execute the command.
+
 ## Bugs
 
 Fast long running commands like `ls -R /` are quite glitchy.
+Using `watch` doesn't work, there is an auto-refresh button to try and get around this limitation. 
 
 ## To Do
 

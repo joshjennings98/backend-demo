@@ -167,6 +167,9 @@ document.body.addEventListener('keydown', (event) => {
         pageBackwards();
     } else if (event.key === " " && pages[index].type === commandTag) {
         runCommand();
+    } else if (event.key === "r" && pages[index].type === commandTag) {
+        refreshCheckbox.checked = !refreshCheckbox.checked;
+        refreshCommand();
     }
 });
 
