@@ -46,13 +46,10 @@ img {
     margin-bottom: 20px;
 }
 
-.command-control {
-    padding: 10px;
-}
-
 #command-control-wrapper {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     margin: 20px;
 }
 

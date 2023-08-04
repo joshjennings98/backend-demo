@@ -3,6 +3,7 @@ const outputDiv = document.getElementById('text-output');
 const pageSelect = document.getElementById('page-select');
 const commandControlWrapper = document.getElementById('command-control-wrapper');
 const refreshCheckbox = document.getElementById('auto-refresh-command');
+const secondsDropdown = document.getElementById('seconds');
 const currentCommand = document.getElementById('current-command');
 
 let pages = [];
@@ -48,7 +49,7 @@ async function loadPage() {
         if (pages[index].type === commandTag) {
             outputDiv.style.display = 'none';
             iframe.style.display = 'block';
-            commandControlWrapper.style.display = 'block';
+            commandControlWrapper.style.display = 'flex';
             currentCommand.style.display = 'block';
             textLines = [];
             displayedLines = [];
@@ -120,12 +121,20 @@ function runCommand() {
     iframe.src = `/pages/${index}`;
 }
 
-refreshCheckbox.addEventListener("change", function() {
-    if (this.checked) {
-        myInterval = setInterval(runCommand, 4000);
-    } else {
-        clearInterval(myInterval); 
+function refreshCommand() {
+    clearInterval(myInterval); 
+    if (refreshCheckbox.checked) {
+        myInterval = setInterval(runCommand, `${secondsDropdown.value}000`);
     }
+}
+
+secondsDropdown.addEventListener('change', () => {
+    refreshCheckbox.checked = true;
+    refreshCommand();
+});
+
+refreshCheckbox.addEventListener("change", function() {
+    refreshCommand();
 });
 
 pageSelect.addEventListener('change', () => {

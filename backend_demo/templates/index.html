@@ -16,10 +16,15 @@
             <div id="text-output"></div>
             <div id="command-control-wrapper">
                 <button class="command-control" onclick="runCommand()">Run Command</button>&nbsp;&nbsp;
-                <div class="command-control">
-                    <input type="checkbox" id="auto-refresh-command">
-                    <label for="auto-refresh-command" title="Automatically re-run command every four seconds">Refresh</label>
-                </div>
+                <input type="checkbox" id="auto-refresh-command">
+                <label for="auto-refresh-command" title="Automatically re-run command">Refresh&nbsp;&nbsp;</label>
+                <select id="seconds">
+                    <option value="1">1 seconds</option>
+                    <option value="2">2 seconds</option>
+                    <option value="3">3 seconds</option>
+                    <option value="5">5 seconds</option>
+                    <option value="10">10 seconds</option>
+                 </select>
             </div>
         </main>
         <script type="text/javascript">
