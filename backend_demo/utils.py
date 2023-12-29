@@ -24,6 +24,10 @@ def parse_commands(lines):
     commands = []
     current_command = None
     current_content = []
+    
+    if len(lines) == 0:
+        return commands
+
     for line in lines:
         stripped = line.strip()
         if Tag.is_tag(stripped):
