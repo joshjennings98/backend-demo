@@ -1,4 +1,4 @@
-# Backend Demo Presnetation Tool
+# Backend Demo Presentation Tool
 
 Present backend demos in a powerpoint-like format.
 
@@ -46,6 +46,16 @@ backend_demo commands.txt
 Use the mouse button to go forward and back or select a slide via the dropdown menu.
 
 Alternatively use the arrow keys for forward and back and the space bar to execute the command.
+
+## Testing
+
+To run the tests you can use `pipenv`:
+
+```sh
+pip install pipenv
+pipenv install --dev
+pipenv run python -m unittest tests/*
+```
 
 ## Bugs
 
