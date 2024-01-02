@@ -377,7 +377,6 @@ func newButton(buttonType string) gomponents.Node {
 	return html.FormEl(
 		gomponents.Attr("id", fmt.Sprintf("%v-button", buttonType)),
 		gomponents.Attr("method", "post"),
-		gomponents.Attr("hx-swap", "outerHTML"),
 		gomponents.Attr("hx-post", fmt.Sprintf("/%v", buttonType)),
 		gomponents.Attr("hx-target", fmt.Sprintf("#%v-button", buttonType)),
 		html.Button(gomponents.Text(strings.Title(buttonType))),
