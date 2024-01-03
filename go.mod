@@ -1,4 +1,4 @@
-module t
+module github.com/joshjennings98/backend-demo
 
 go 1.21.5
 
