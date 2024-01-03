@@ -3,40 +3,30 @@ package server
 import (
 	"fmt"
 	"net/http"
-	"os"
-	"regexp"
-	"strings"
 
 	"github.com/gorilla/mux"
 )
 
 func Start(commandsFile string) error {
-	contents, err := os.ReadFile("commands.txt")
+	m, err := NewDemoManager(commandsFile)
 	if err != nil {
 		return err
-	}
-
-	split := strings.Split(regexp.MustCompile(`\\\s*\n`).ReplaceAllString(string(contents), ""), "\n")
-	for i := range split {
-		if strings.TrimSpace(split[i]) != "" {
-			commands = append(commands, split[i])
-		}
 	}
 
 	fs := http.FileServer(http.Dir("static"))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	r := mux.NewRouter()
-	r.HandleFunc(indexEndpoint, indexHandler)
-	r.HandleFunc(initEndpoint, initHandler)
-	r.HandleFunc(incPageEndpoint, incPageHandler)
-	r.HandleFunc(decPageEndpoint, decPageHandler)
-	r.HandleFunc(setPageEndpoint, setPageHandler)
-	r.HandleFunc(executeEndpoint, executeCommandHandler).
+	r.HandleFunc(indexEndpoint, m.indexHandler)
+	r.HandleFunc(initEndpoint, m.initHandler)
+	r.HandleFunc(incPageEndpoint, m.incPageHandler)
+	r.HandleFunc(decPageEndpoint, m.decPageHandler)
+	r.HandleFunc(setPageEndpoint, m.setPageHandler)
+	r.HandleFunc(executeEndpoint, m.executeCommandHandler).
 		Methods(http.MethodPost)
-	r.HandleFunc(executeEndpoint, executeStatusHandler).
+	r.HandleFunc(executeEndpoint, m.executeStatusHandler).
 		Methods(http.MethodGet)
-	r.HandleFunc(stopEndpoint, stopCommandHandler)
+	r.HandleFunc(stopEndpoint, m.stopCommandHandler)
 
 	http.Handle(indexEndpoint, r)
 	fmt.Println("Server is running on http://localhost:8080")

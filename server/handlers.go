@@ -16,18 +16,6 @@ import (
 	"sync"
 
 	"github.com/gorilla/websocket"
-	"github.com/maragudk/gomponents"
-	"github.com/maragudk/gomponents/html"
-)
-
-var (
-	commands       = []string{}
-	cmd            *exec.Cmd
-	cmdMutex       sync.Mutex
-	cmdNumber      int
-	cmdNumberMutex sync.Mutex
-	cmdContext     context.Context
-	cancelCommand  func()
 )
 
 var commandRegex = regexp.MustCompile(`^\$\s*`)
@@ -56,26 +44,16 @@ const (
 	terminalBufferSize = 1024
 )
 
-func indexHandler(w http.ResponseWriter, r *http.Request) {
-	page := html.HTML(
-		html.Head(
-			html.TitleEl(gomponents.Text("Backend Demo Tool")),
-			html.Script(html.Src("static/main.js")),
-			html.Script(html.Src("https://unpkg.com/htmx.org")),
-			html.Script(html.Src("https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js")),
-			html.Link(html.Rel("stylesheet"), html.Href("static/main.css")),
-			html.Link(html.Rel("stylesheet"), html.Href("https://cdn.jsdelivr.net/npm/xterm/css/xterm.css")),
-		),
-		html.Body(
-			contentDiv(),
-		),
-	)
+func (m *DemoManager) indexHandler(w http.ResponseWriter, r *http.Request) {
+	m.cmdMutex.Lock()
+	isCmdRunning := m.cmd != nil
+	m.cmdMutex.Unlock()
 
 	w.WriteHeader(http.StatusOK)
-	page.Render(w)
+	indexHTML(m.commands, m.cmdNumber, isCmdRunning).Render(w)
 }
 
-func initHandler(w http.ResponseWriter, r *http.Request) {
+func (m *DemoManager) initHandler(w http.ResponseWriter, r *http.Request) {
 	// TODO: handle this better, js should try to reconect and refreshing shouldn't cause issues
 	upgradeOnce.Do(func() {
 		log.Println("Upgrading http to websocket")
@@ -88,16 +66,20 @@ func initHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func incPageHandler(w http.ResponseWriter, r *http.Request) {
-	cmdNumberMutex.Lock()
-	prevCommand := cmdNumber
-	cmdNumber = min(len(commands)-1, cmdNumber+1)
-	cmdNumberMutex.Unlock()
+func (m *DemoManager) incPageHandler(w http.ResponseWriter, r *http.Request) {
+	m.cmdNumberMutex.Lock()
+	prevCommand := m.cmdNumber
+	m.cmdNumber = min(len(m.commands)-1, m.cmdNumber+1)
+	m.cmdNumberMutex.Unlock()
 
-	stopCurrentCommand()
+	m.cmdMutex.Lock()
+	isCmdRunning := m.cmd != nil
+	m.cmdMutex.Unlock()
 
-	if prevCommand != cmdNumber {
-		contentDiv().Render(w)
+	m.stopCurrentCommand()
+
+	if prevCommand != m.cmdNumber {
+		contentDiv(m.commands, m.cmdNumber, isCmdRunning).Render(w)
 	} else {
 		w.WriteHeader(http.StatusNoContent)
 		return
@@ -108,16 +90,20 @@ func incPageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func decPageHandler(w http.ResponseWriter, r *http.Request) {
-	cmdNumberMutex.Lock()
-	prevCommand := cmdNumber
-	cmdNumber = max(0, cmdNumber-1)
-	cmdNumberMutex.Unlock()
+func (m *DemoManager) decPageHandler(w http.ResponseWriter, r *http.Request) {
+	m.cmdNumberMutex.Lock()
+	prevCommand := m.cmdNumber
+	m.cmdNumber = max(0, m.cmdNumber-1)
+	m.cmdNumberMutex.Unlock()
 
-	stopCurrentCommand()
+	m.cmdMutex.Lock()
+	isCmdRunning := m.cmd != nil
+	m.cmdMutex.Unlock()
 
-	if prevCommand != cmdNumber {
-		contentDiv().Render(w)
+	m.stopCurrentCommand()
+
+	if prevCommand != m.cmdNumber {
+		contentDiv(m.commands, m.cmdNumber, isCmdRunning).Render(w)
 	} else {
 		w.WriteHeader(http.StatusNoContent)
 		return
@@ -128,7 +114,7 @@ func decPageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func setPageHandler(w http.ResponseWriter, r *http.Request) {
+func (m *DemoManager) setPageHandler(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "Failed to parse form", http.StatusBadRequest)
 		return
@@ -141,14 +127,18 @@ func setPageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cmdNumberMutex.Lock()
-	prevCommand := cmdNumber
-	cmdNumber = slideIndexVal
-	cmdNumberMutex.Unlock()
+	m.cmdNumberMutex.Lock()
+	prevCommand := m.cmdNumber
+	m.cmdNumber = slideIndexVal
+	m.cmdNumberMutex.Unlock()
 
-	if cmdNumber != prevCommand {
-		stopCurrentCommand()
-		contentDiv().Render(w)
+	m.cmdMutex.Lock()
+	isCmdRunning := m.cmd != nil
+	m.cmdMutex.Unlock()
+
+	if m.cmdNumber != prevCommand {
+		m.stopCurrentCommand()
+		contentDiv(m.commands, m.cmdNumber, isCmdRunning).Render(w)
 	}
 
 	if err := ws.WriteMessage(websocket.TextMessage, []byte("\033[2J\033[H")); err != nil {
@@ -156,39 +146,39 @@ func setPageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func waitForCommandExit() {
+func (m *DemoManager) waitForCommandExit() {
 	var exitErr *exec.ExitError
-	if err := cmd.Wait(); errors.As(err, &exitErr) {
+	if err := m.cmd.Wait(); errors.As(err, &exitErr) {
 		return // command exited
 	}
 	select {
-	case <-cmdContext.Done():
+	case <-m.cmdContext.Done():
 		return // already cancelled
 	default:
-		stopCurrentCommand()
+		m.stopCurrentCommand()
 		return
 	}
 }
 
-func executeCommand(stdoutPipe io.Reader) {
-	cmdMutex.Lock()
-	if cmd == nil {
+func (m *DemoManager) executeCommand(stdoutPipe io.Reader) {
+	m.cmdMutex.Lock()
+	if m.cmd == nil {
 		return
 	}
-	if err := cmd.Start(); err != nil {
-		log.Printf("Error starting command '%v': %v\n", commandRegex.ReplaceAllString(commands[cmdNumber], ""), err)
+	if err := m.cmd.Start(); err != nil {
+		log.Printf("Error starting command '%v': %v\n", commandRegex.ReplaceAllString(m.commands[m.cmdNumber], ""), err)
 		return
 	}
-	cmdMutex.Unlock()
+	m.cmdMutex.Unlock()
 
-	go waitForCommandExit()
+	go m.waitForCommandExit()
 
 	reader := bufio.NewReader(stdoutPipe)
 	buffer := make([]byte, terminalBufferSize)
 
 	for {
 		select {
-		case <-cmdContext.Done():
+		case <-m.cmdContext.Done():
 			return // command context cancelled
 		default:
 			n, err := reader.Read(buffer)
@@ -209,61 +199,61 @@ func executeCommand(stdoutPipe io.Reader) {
 	}
 }
 
-func executeCommandHandler(w http.ResponseWriter, r *http.Request) {
-	stopCurrentCommand()
-	log.Printf("Starting command '%v'\n", commandRegex.ReplaceAllString(commands[cmdNumber], ""))
+func (m *DemoManager) executeCommandHandler(w http.ResponseWriter, r *http.Request) {
+	m.stopCurrentCommand()
+	log.Printf("Starting command '%v'\n", commandRegex.ReplaceAllString(m.commands[m.cmdNumber], ""))
 
 	if err := ws.WriteMessage(websocket.TextMessage, []byte("\033[2J\033[H")); err != nil {
 		log.Println("Error sending clear to websocket:", err)
 	}
 
-	cmdMutex.Lock()
-	cmdContext, cancelCommand = context.WithCancel(context.Background())
-	cmd = exec.CommandContext(cmdContext, "sh", "-c", commandRegex.ReplaceAllString(commands[cmdNumber], ""))
-	stdoutPipe, err := cmd.StdoutPipe()
+	m.cmdMutex.Lock()
+	m.cmdContext, m.cancelCommand = context.WithCancel(context.Background())
+	m.cmd = exec.CommandContext(m.cmdContext, "sh", "-c", commandRegex.ReplaceAllString(m.commands[m.cmdNumber], ""))
+	stdoutPipe, err := m.cmd.StdoutPipe()
 	if err != nil {
 		log.Printf("Error creating StdoutPipe for Cmd: %v\n", err)
 		return
 	}
-	cmd.Stderr = cmd.Stdout
-	cmdMutex.Unlock()
+	m.cmd.Stderr = m.cmd.Stdout
+	m.cmdMutex.Unlock()
 
-	runningButton().Render(w)
+	runningButton(true).Render(w)
 
-	go executeCommand(stdoutPipe)
+	go m.executeCommand(stdoutPipe)
 }
 
-func executeStatusHandler(w http.ResponseWriter, r *http.Request) {
-	cmdMutex.Lock()
-	isCmdRunning := cmd != nil
-	cmdMutex.Unlock()
+func (m *DemoManager) executeStatusHandler(w http.ResponseWriter, r *http.Request) {
+	m.cmdMutex.Lock()
+	isCmdRunning := m.cmd != nil
+	m.cmdMutex.Unlock()
 
 	if !isCmdRunning {
-		runningButton().Render(w)
+		runningButton(isCmdRunning).Render(w)
 	} else {
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
-func stopCommandHandler(w http.ResponseWriter, r *http.Request) {
-	stopCurrentCommand()
-	log.Printf("Stopped command '%v'\n", commandRegex.ReplaceAllString(commands[cmdNumber], ""))
-	runningButton().Render(w)
+func (m *DemoManager) stopCommandHandler(w http.ResponseWriter, r *http.Request) {
+	m.stopCurrentCommand()
+	log.Printf("Stopped command '%v'\n", commandRegex.ReplaceAllString(m.commands[m.cmdNumber], ""))
+	runningButton(false).Render(w)
 }
 
-func stopCurrentCommand() {
-	cmdMutex.Lock()
-	defer cmdMutex.Unlock()
+func (m *DemoManager) stopCurrentCommand() {
+	m.cmdMutex.Lock()
+	defer m.cmdMutex.Unlock()
 
-	if cancelCommand != nil {
-		cancelCommand()
-		cancelCommand = nil
+	if m.cancelCommand != nil {
+		m.cancelCommand()
+		m.cancelCommand = nil
 	}
 
-	if cmd != nil && cmd.Process != nil && (cmd.ProcessState == nil || !cmd.ProcessState.Exited()) {
-		if err := cmd.Process.Signal(os.Interrupt); err != nil {
+	if m.cmd != nil && m.cmd.Process != nil && (m.cmd.ProcessState == nil || !m.cmd.ProcessState.Exited()) {
+		if err := m.cmd.Process.Signal(os.Interrupt); err != nil {
 			log.Printf("Error stopping command: %v\n", err)
 		}
 	}
-	cmd = nil
+	m.cmd = nil
 }

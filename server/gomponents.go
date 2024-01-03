@@ -16,13 +16,29 @@ func gomponentsIfElse(condition bool, ifBranch, elseBranch gomponents.Node) gomp
 	return elseBranch
 }
 
-func contentDiv() gomponents.Node {
-	isCommand := strings.HasPrefix(commands[cmdNumber], "$")
+func indexHTML(commands []string, idx int, isCmdRunning bool) gomponents.Node {
+	return html.HTML(
+		html.Head(
+			html.TitleEl(gomponents.Text("Backend Demo Tool")),
+			html.Script(html.Src("static/main.js")),
+			html.Script(html.Src("https://unpkg.com/htmx.org")),
+			html.Script(html.Src("https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js")),
+			html.Link(html.Rel("stylesheet"), html.Href("static/main.css")),
+			html.Link(html.Rel("stylesheet"), html.Href("https://cdn.jsdelivr.net/npm/xterm/css/xterm.css")),
+		),
+		html.Body(
+			contentDiv(commands, idx, isCmdRunning),
+		),
+	)
+}
+
+func contentDiv(commands []string, idx int, isCmdRunning bool) gomponents.Node {
+	isCommand := strings.HasPrefix(commands[idx], "$")
 	return html.Div(
 		html.ID("command"),
 		html.Div(
 			html.ID("controls"),
-			slideSelect(cmdNumber),
+			slideSelect(commands, idx),
 			html.FormEl(
 				html.Class("control"),
 				hx.Post(decPageEndpoint),
@@ -47,7 +63,7 @@ func contentDiv() gomponents.Node {
 					html.Class("command-string"),
 					html.Class("text-string"),
 				),
-				gomponents.Text(commandRegex.ReplaceAllString(commands[cmdNumber], "")),
+				gomponents.Text(commandRegex.ReplaceAllString(commands[idx], "")),
 			),
 		),
 		html.Div(
@@ -59,12 +75,12 @@ func contentDiv() gomponents.Node {
 				html.ID("terminal"),
 				hx.Preserve("true"),
 			),
-			runningButton(),
+			runningButton(isCmdRunning),
 		),
 	)
 }
 
-func slideSelect(selected int) gomponents.Node {
+func slideSelect(commands []string, selected int) gomponents.Node {
 	var options []gomponents.Node
 	for i := range commands {
 		options = append(options, html.Option(
@@ -88,11 +104,7 @@ func slideSelect(selected int) gomponents.Node {
 	)
 }
 
-func runningButton() gomponents.Node {
-	cmdMutex.Lock()
-	isCmdRunning := cmd != nil
-	cmdMutex.Unlock()
-
+func runningButton(isCmdRunning bool) gomponents.Node {
 	if isCmdRunning {
 		return html.Div(
 			hx.Get(executeEndpoint),
