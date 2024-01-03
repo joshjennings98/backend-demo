@@ -3,6 +3,7 @@ var socket
 window.addEventListener('load', function () {
     var term = new Terminal({
         fontSize: 24,
+        fontFamily: "Monospace",
     });
     term.open(document.getElementById('terminal'));
 

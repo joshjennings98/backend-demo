@@ -64,26 +64,39 @@ func contentScreen() gomponents.Node {
 	return html.Div(
 		gomponents.Attr("id", "command"),
 		html.Div(
+			gomponents.Attr("id", "controls"),
 			createDropdown(command),
-		),
-		html.Div(
 			html.FormEl(
+				gomponents.Attr("class", "control"),
 				gomponents.Attr("method", "post"),
 				gomponents.Attr("hx-post", "/dec-page"),
 				gomponents.Attr("hx-swap", "outerHTML"),
 				gomponents.Attr("hx-target", "#command"),
+				gomponents.Attr("hx-trigger", "click, keyup[key=='ArrowLeft'] from:body"),
 				html.Button(gomponents.Text("prev")),
 			),
 			html.FormEl(
+				gomponents.Attr("class", "control"),
 				gomponents.Attr("method", "post"),
 				gomponents.Attr("hx-post", "/inc-page"),
 				gomponents.Attr("hx-swap", "outerHTML"),
 				gomponents.Attr("hx-target", "#command"),
+				gomponents.Attr("hx-trigger", "click, keyup[key=='ArrowRight'] from:body"),
 				html.Button(gomponents.Text("next")),
 			),
 		),
 		html.Div(
-			html.P(gomponents.Text(fmt.Sprint(commands[command]))),
+			html.Div(
+				gomponents.If(
+					isCommand,
+					html.Class("command-string"),
+				),
+				gomponents.If(
+					!isCommand,
+					html.Class("text-string"),
+				),
+				gomponents.Text(commandRegex.ReplaceAllString(commands[command], "")),
+			),
 		),
 		gomponents.If(isCommand,
 			html.Div(
@@ -163,6 +176,7 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 			html.Script(gomponents.Attr("src", "https://unpkg.com/htmx.org")),
 			html.Script(gomponents.Attr("src", "https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js")),
 			html.Script(gomponents.Attr("src", "static/main.js")),
+			html.Link(html.Rel("stylesheet"), html.Href("static/main.css")),
 			html.Link(html.Rel("stylesheet"), html.Href("https://cdn.jsdelivr.net/npm/xterm/css/xterm.css")),
 		),
 		html.Body(
@@ -186,6 +200,10 @@ func handleIncrement(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusNoContent)
 	}
+
+	if err := conn.WriteMessage(websocket.TextMessage, []byte("\033[2J\033[H")); err != nil {
+		log.Println("Error sending clear to websocket:", err)
+	}
 }
 
 func handleStop(w http.ResponseWriter, r *http.Request) {
@@ -199,10 +217,15 @@ func handleDecrement(w http.ResponseWriter, r *http.Request) {
 	command = max(0, command-1)
 	mu.Unlock()
 	stopCurrentCommand()
+
 	if prevCommand != command {
 		contentScreen().Render(w)
 	} else {
 		w.WriteHeader(http.StatusNoContent)
+	}
+
+	if err := conn.WriteMessage(websocket.TextMessage, []byte("\033[2J\033[H")); err != nil {
+		log.Println("Error sending clear to websocket:", err)
 	}
 }
 
@@ -267,6 +290,9 @@ func handleExecute(w http.ResponseWriter, r *http.Request) {
 	go func() {
 
 		cmdMutex.Lock()
+		if cmd == nil {
+			return
+		}
 		if err := cmd.Start(); err != nil {
 			log.Printf("Error starting Cmd: %v\n", err)
 			return
@@ -373,20 +399,30 @@ func runButton() gomponents.Node {
 	)
 }
 
-func newButton(buttonType string) gomponents.Node {
-	return html.FormEl(
-		gomponents.Attr("id", fmt.Sprintf("%v-button", buttonType)),
-		gomponents.Attr("method", "post"),
-		gomponents.Attr("hx-post", fmt.Sprintf("/%v", buttonType)),
-		gomponents.Attr("hx-target", fmt.Sprintf("#%v-button", buttonType)),
-		html.Button(gomponents.Text(strings.Title(buttonType))),
-	)
+func newControlButton(buttonType string) gomponents.Node {
+	return gomponents.Group([]gomponents.Node{ // TODO: make these class based for the targets?
+		html.FormEl(
+			gomponents.Attr("id", fmt.Sprintf("%v-button", buttonType)),
+			gomponents.Attr("method", "post"),
+			gomponents.Attr("hx-post", fmt.Sprintf("/%v", buttonType)),
+			gomponents.Attr("hx-target", fmt.Sprintf("#%v-button", buttonType)),
+			html.Button(gomponents.Text(strings.Title(buttonType))),
+		),
+		html.FormEl(
+			gomponents.Attr("id", fmt.Sprintf("%v-button", buttonType)),
+			gomponents.Attr("method", "post"),
+			gomponents.Attr("hx-post", fmt.Sprintf("/%v", buttonType)),
+			gomponents.Attr("hx-target", fmt.Sprintf("#%v-button", buttonType)),
+			gomponents.Attr("hx-trigger", "keyup[key==' '] from:body"),
+			gomponents.Attr("hidden", "true"),
+		),
+	})
 }
 
 func stopButton() gomponents.Node {
-	return newButton("stop")
+	return newControlButton("stop")
 }
 
 func executeButton() gomponents.Node {
-	return newButton("execute")
+	return newControlButton("execute")
 }

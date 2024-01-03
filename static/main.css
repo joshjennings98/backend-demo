@@ -1,0 +1,55 @@
+body {
+    overflow: hidden; /* or 'auto' depending on your needs */
+    width: 100%; /* or a fixed width if necessary */
+}
+
+#controls {
+    display: flex;
+}
+
+select, button {
+    height: 25px;
+}
+
+.control {
+    padding-left: 10px;
+}
+
+#terminal {
+    padding-right: 15px;
+    padding-bottom: 10px;
+}
+
+.command-string {
+    color: white;
+    background: black;
+    padding: 10px;
+    font-size: 24px;
+    font-family: Monospace;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    max-width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.text-string {
+    box-sizing: border-box;
+    font-size: 36px;
+    font-family: Arial;
+    user-select: none;
+    width: 80%;
+    height: 90%;
+    margin: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+  }
+
+.xterm-screen {
+    padding: 10px;
+}
