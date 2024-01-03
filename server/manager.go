@@ -7,9 +7,12 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+
+	"github.com/gorilla/websocket"
 )
 
 type DemoManager struct {
+	ws             *websocket.Conn
 	commands       []string
 	cmd            *exec.Cmd
 	cmdMutex       sync.Mutex
