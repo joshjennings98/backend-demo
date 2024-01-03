@@ -19,12 +19,45 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/maragudk/gomponents"
+	hx "github.com/maragudk/gomponents-htmx"
 	"github.com/maragudk/gomponents/html"
 )
 
 var (
-	command int
-	mu      sync.Mutex
+	commands       = []string{}
+	cmd            *exec.Cmd
+	cmdMutex       sync.Mutex
+	cmdNumber      int
+	cmdNumberMutex sync.Mutex
+	lastKnownState = false
+	cmdContext     context.Context
+	cancelCommand  func()
+)
+
+var commandRegex = regexp.MustCompile(`^\$\s*`)
+
+var (
+	ws          *websocket.Conn
+	upgradeOnce sync.Once
+	upgrader    = websocket.Upgrader{
+		ReadBufferSize:  terminalBufferSize,
+		WriteBufferSize: terminalBufferSize,
+		CheckOrigin: func(r *http.Request) bool {
+			return true // Allow connections from any origin
+		},
+	}
+)
+
+const (
+	indexEndpoint   = "/"
+	initEndpoint    = "/init"
+	incPageEndpoint = "/inc-page"
+	decPageEndpoint = "/dec-page"
+	setPageEndpoint = "/set-page"
+	executeEndpoint = "/execute"
+	stopEndpoint    = "/stop"
+
+	terminalBufferSize = 1024
 )
 
 func main() {
@@ -44,108 +77,218 @@ func main() {
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	r := mux.NewRouter()
-	r.HandleFunc("/", handleIndex)
-	r.HandleFunc("/init", handleWebsocket)
-	r.HandleFunc("/inc-page", handleIncrement)
-	r.HandleFunc("/dec-page", handleDecrement)
-	r.HandleFunc("/set-page", handleSetPage)
-	r.HandleFunc("/execute", handleExecute).Methods(http.MethodPost)
-	r.HandleFunc("/execute", handleCommandStatus).Methods(http.MethodGet)
-	r.HandleFunc("/stop", handleStop)
+	r.HandleFunc(indexEndpoint, indexHandler)
+	r.HandleFunc(initEndpoint, initHandler)
+	r.HandleFunc(incPageEndpoint, incPageHandler)
+	r.HandleFunc(decPageEndpoint, decPageHandler)
+	r.HandleFunc(setPageEndpoint, setPageHandler)
+	r.HandleFunc(executeEndpoint, executeCommandHandler).
+		Methods(http.MethodPost)
+	r.HandleFunc(executeEndpoint, executeStatusHandler).
+		Methods(http.MethodGet)
+	r.HandleFunc(stopEndpoint, stopCommandHandler)
 
-	http.Handle("/", r)
+	http.Handle(indexEndpoint, r)
 	fmt.Println("Server is running on http://localhost:8080")
 	http.ListenAndServe(":8080", nil)
 }
 
-// TODO: simplify this so that less is updated
-func contentScreen() gomponents.Node {
-	isCommand := strings.HasPrefix(commands[command], "$")
+func gomponentsIfElse(condition bool, ifBranch, elseBranch gomponents.Node) gomponents.Node {
+	if condition {
+		return ifBranch
+	}
+	return elseBranch
+}
+
+func contentDiv() gomponents.Node {
+	isCommand := strings.HasPrefix(commands[cmdNumber], "$")
 	return html.Div(
-		gomponents.Attr("id", "command"),
+		html.ID("command"),
 		html.Div(
-			gomponents.Attr("id", "controls"),
-			createDropdown(command),
+			html.ID("controls"),
+			slideSelect(cmdNumber),
 			html.FormEl(
-				gomponents.Attr("class", "control"),
-				gomponents.Attr("method", "post"),
-				gomponents.Attr("hx-post", "/dec-page"),
-				gomponents.Attr("hx-swap", "outerHTML"),
-				gomponents.Attr("hx-target", "#command"),
-				gomponents.Attr("hx-trigger", "click, keyup[key=='ArrowLeft'] from:body"),
+				html.Class("control"),
+				hx.Post(decPageEndpoint),
+				hx.Swap("outerHTML"),
+				hx.Target("#command"),
+				hx.Trigger("click, keyup[key=='ArrowLeft'] from:body"),
 				html.Button(gomponents.Text("prev")),
 			),
 			html.FormEl(
-				gomponents.Attr("class", "control"),
-				gomponents.Attr("method", "post"),
-				gomponents.Attr("hx-post", "/inc-page"),
-				gomponents.Attr("hx-swap", "outerHTML"),
-				gomponents.Attr("hx-target", "#command"),
-				gomponents.Attr("hx-trigger", "click, keyup[key=='ArrowRight'] from:body"),
+				html.Class("control"),
+				hx.Post(incPageEndpoint),
+				hx.Swap("outerHTML"),
+				hx.Target("#command"),
+				hx.Trigger("click, keyup[key=='ArrowRight'] from:body"),
 				html.Button(gomponents.Text("next")),
 			),
 		),
 		html.Div(
 			html.Div(
-				gomponents.If(
+				gomponentsIfElse(
 					isCommand,
 					html.Class("command-string"),
-				),
-				gomponents.If(
-					!isCommand,
 					html.Class("text-string"),
 				),
-				gomponents.Text(commandRegex.ReplaceAllString(commands[command], "")),
+				gomponents.Text(commandRegex.ReplaceAllString(commands[cmdNumber], "")),
 			),
 		),
-		gomponents.If(isCommand,
-			html.Div(
-				html.Div(
-					gomponents.Attr("id", "terminal"),
-					gomponents.Attr("hx-preserve", "true"),
-				),
-				runButton(),
-			),
-		),
-		gomponents.If(!isCommand,
-			html.Div(
+		html.Div(
+			gomponents.If(
+				!isCommand,
 				gomponents.Attr("hidden", "true"),
-				html.Div(
-					gomponents.Attr("id", "terminal"),
-					gomponents.Attr("hx-preserve", "true"),
-				),
-				runButton(),
 			),
+			html.Div(
+				html.ID("terminal"),
+				hx.Preserve("true"),
+			),
+			runningButton(),
 		),
 	)
 }
 
-func createDropdown(selected int) gomponents.Node {
+func slideSelect(selected int) gomponents.Node {
 	var options []gomponents.Node
 	for i := range commands {
-		var optionAttributes []gomponents.Node
-		optionAttributes = append(optionAttributes, html.Value(fmt.Sprintf("%d", i)))
-
-		if i == selected {
-			optionAttributes = append(optionAttributes, html.Selected())
-		}
-
 		options = append(options, html.Option(
-			gomponents.Group(optionAttributes),
+			gomponents.Group([]gomponents.Node{
+				html.Value(fmt.Sprint(i)),
+				gomponents.If(
+					i == selected,
+					html.Selected(),
+				),
+			}),
 			gomponents.Text(fmt.Sprintf("Slide %d/%d", i+1, len(commands))),
 		))
 	}
 
 	return html.Select(
-		gomponents.Attr("hx-post", "/set-page"),
-		gomponents.Attr("hx-trigger", "change"),
-		gomponents.Attr("hx-target", "#command"),
-		gomponents.Attr("name", "slideIndex"),
+		hx.Post(setPageEndpoint),
+		hx.Trigger("change"),
+		hx.Target("#command"),
+		html.Name("slideIndex"),
 		gomponents.Group(options),
 	)
 }
 
-func handleSetPage(w http.ResponseWriter, r *http.Request) {
+func runningButton() gomponents.Node {
+	cmdMutex.Lock()
+	isCmdRunning := cmd != nil
+	cmdMutex.Unlock()
+
+	if isCmdRunning {
+		return html.Div(
+			hx.Get(executeEndpoint),
+			hx.Trigger("every 100ms"),
+			hx.Target("#execute-button"),
+			stopButton(),
+		)
+	}
+
+	return html.Div(
+		executeButton(),
+	)
+}
+
+func controlButton(buttonType string) gomponents.Node {
+	return gomponents.Group([]gomponents.Node{
+		html.FormEl(
+			html.ID(fmt.Sprintf("%v-button", buttonType)),
+			hx.Post(fmt.Sprintf("/%v", buttonType)),
+			hx.Target(fmt.Sprintf("#%v-button", buttonType)),
+			html.Button(gomponents.Text(buttonType)),
+		),
+		html.FormEl(
+			hx.Post(fmt.Sprintf("/%v", buttonType)),
+			hx.Target(fmt.Sprintf("#%v-button", buttonType)),
+			hx.Trigger("keyup[key==' '] from:body"),
+			gomponents.Attr("hidden", "true"),
+		),
+	})
+}
+
+func stopButton() gomponents.Node {
+	return controlButton(stopEndpoint[1:])
+}
+
+func executeButton() gomponents.Node {
+	return controlButton(executeEndpoint[1:])
+}
+
+func indexHandler(w http.ResponseWriter, r *http.Request) {
+	page := html.HTML(
+		html.Head(
+			html.TitleEl(gomponents.Text("Backend Demo Tool")),
+			html.Script(html.Src("static/main.js")),
+			html.Script(html.Src("https://unpkg.com/htmx.org")),
+			html.Script(html.Src("https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js")),
+			html.Link(html.Rel("stylesheet"), html.Href("static/main.css")),
+			html.Link(html.Rel("stylesheet"), html.Href("https://cdn.jsdelivr.net/npm/xterm/css/xterm.css")),
+		),
+		html.Body(
+			contentDiv(),
+		),
+	)
+
+	w.WriteHeader(http.StatusOK)
+	page.Render(w)
+}
+
+func initHandler(w http.ResponseWriter, r *http.Request) {
+	// TODO: handle this better, js should try to reconect and refreshing shouldn't cause issues
+	upgradeOnce.Do(func() {
+		log.Println("Upgrading http to websocket")
+		var err error
+		ws, err = upgrader.Upgrade(w, r, nil) // upgrade HTTP to WebSocket
+		if err != nil {
+			log.Println("Error upgrading to websocket:", err)
+			return
+		}
+	})
+}
+
+func incPageHandler(w http.ResponseWriter, r *http.Request) {
+	cmdNumberMutex.Lock()
+	prevCommand := cmdNumber
+	cmdNumber = min(len(commands)-1, cmdNumber+1)
+	cmdNumberMutex.Unlock()
+
+	stopCurrentCommand()
+
+	if prevCommand != cmdNumber {
+		contentDiv().Render(w)
+	} else {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	if err := ws.WriteMessage(websocket.TextMessage, []byte("\033[2J\033[H")); err != nil {
+		log.Println("Error sending clear to websocket:", err)
+	}
+}
+
+func decPageHandler(w http.ResponseWriter, r *http.Request) {
+	cmdNumberMutex.Lock()
+	prevCommand := cmdNumber
+	cmdNumber = max(0, cmdNumber-1)
+	cmdNumberMutex.Unlock()
+
+	stopCurrentCommand()
+
+	if prevCommand != cmdNumber {
+		contentDiv().Render(w)
+	} else {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	if err := ws.WriteMessage(websocket.TextMessage, []byte("\033[2J\033[H")); err != nil {
+		log.Println("Error sending clear to websocket:", err)
+	}
+}
+
+func setPageHandler(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "Failed to parse form", http.StatusBadRequest)
 		return
@@ -158,124 +301,85 @@ func handleSetPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mu.Lock()
-	prevCommand := command
-	command = slideIndexVal
-	mu.Unlock()
-	if command != prevCommand {
+	cmdNumberMutex.Lock()
+	prevCommand := cmdNumber
+	cmdNumber = slideIndexVal
+	cmdNumberMutex.Unlock()
+
+	if cmdNumber != prevCommand {
 		stopCurrentCommand()
-		contentScreen().Render(w)
-	}
-}
-
-func handleIndex(w http.ResponseWriter, r *http.Request) {
-	// Render the entire page
-	page := html.HTML(
-		html.Head(
-			html.TitleEl(gomponents.Text("Backend Demo Tool")),
-			html.Script(gomponents.Attr("src", "https://unpkg.com/htmx.org")),
-			html.Script(gomponents.Attr("src", "https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js")),
-			html.Script(gomponents.Attr("src", "static/main.js")),
-			html.Link(html.Rel("stylesheet"), html.Href("static/main.css")),
-			html.Link(html.Rel("stylesheet"), html.Href("https://cdn.jsdelivr.net/npm/xterm/css/xterm.css")),
-		),
-		html.Body(
-			contentScreen(),
-		),
-	)
-
-	w.WriteHeader(http.StatusOK)
-	page.Render(w)
-}
-
-func handleIncrement(w http.ResponseWriter, r *http.Request) {
-	mu.Lock()
-	prevCommand := command
-	command = min(len(commands)-1, command+1)
-	mu.Unlock()
-	stopCurrentCommand()
-
-	if prevCommand != command {
-		contentScreen().Render(w)
-	} else {
-		w.WriteHeader(http.StatusNoContent)
+		contentDiv().Render(w)
 	}
 
-	if err := conn.WriteMessage(websocket.TextMessage, []byte("\033[2J\033[H")); err != nil {
+	if err := ws.WriteMessage(websocket.TextMessage, []byte("\033[2J\033[H")); err != nil {
 		log.Println("Error sending clear to websocket:", err)
 	}
 }
 
-func handleStop(w http.ResponseWriter, r *http.Request) {
-	stopCurrentCommand()
-	runButton().Render(w)
-}
-
-func handleDecrement(w http.ResponseWriter, r *http.Request) {
-	mu.Lock()
-	prevCommand := command
-	command = max(0, command-1)
-	mu.Unlock()
-	stopCurrentCommand()
-
-	if prevCommand != command {
-		contentScreen().Render(w)
-	} else {
-		w.WriteHeader(http.StatusNoContent)
+func waitForCommandExit() {
+	var exitErr *exec.ExitError
+	if err := cmd.Wait(); errors.As(err, &exitErr) {
+		return // command exited
 	}
-
-	if err := conn.WriteMessage(websocket.TextMessage, []byte("\033[2J\033[H")); err != nil {
-		log.Println("Error sending clear to websocket:", err)
+	select {
+	case <-cmdContext.Done():
+		return // already cancelled
+	default:
+		stopCurrentCommand()
+		return
 	}
 }
 
-const bufferSize = 1024
+func executeCommand(stdoutPipe io.Reader) {
+	cmdMutex.Lock()
+	if cmd == nil {
+		return
+	}
+	if err := cmd.Start(); err != nil {
+		log.Printf("Error starting command '%v': %v\n", commandRegex.ReplaceAllString(commands[cmdNumber], ""), err)
+		return
+	}
+	cmdMutex.Unlock()
 
-var commands = []string{}
+	go waitForCommandExit()
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  bufferSize,
-	WriteBufferSize: bufferSize,
-	CheckOrigin: func(r *http.Request) bool {
-		return true // Allow connections from any origin
-	},
-}
+	reader := bufio.NewReader(stdoutPipe)
+	buffer := make([]byte, terminalBufferSize)
 
-var (
-	conn          *websocket.Conn
-	upgradeOnce   sync.Once
-	cmd           *exec.Cmd
-	cmdMutex      sync.Mutex
-	cmdContext    context.Context
-	cancelCommand func()
-)
+	for {
+		select {
+		case <-cmdContext.Done():
+			return // command context cancelled
+		default:
+			n, err := reader.Read(buffer)
+			if err != nil {
+				if err != io.EOF && !errors.Is(err, fs.ErrClosed) {
+					log.Printf("Error reading from StdoutPipe: %v\n", err)
+				}
+				return // command complete
+			}
 
-func handleWebsocket(w http.ResponseWriter, r *http.Request) {
-	// TODO: handle this better, js should try to reconect and refreshing shouldn't cause issues
-	upgradeOnce.Do(func() {
-		log.Println("upgrading http to websocket")
-		var err error
-		conn, err = upgrader.Upgrade(w, r, nil) // upgrade HTTP to WebSocket
-		if err != nil {
-			log.Println("Error upgrading to websocket:", err)
-			return
+			message := string(buffer[:n])
+			message = strings.ReplaceAll(message, "\n", "\n\r")
+			if err := ws.WriteMessage(websocket.TextMessage, []byte(message)); err != nil {
+				log.Println("Error writing to websocket:", err)
+				return
+			}
 		}
-	})
+	}
 }
 
-var commandRegex = regexp.MustCompile(`^\$\s*`)
-
-func handleExecute(w http.ResponseWriter, r *http.Request) {
+func executeCommandHandler(w http.ResponseWriter, r *http.Request) {
 	stopCurrentCommand()
-	log.Println("starting command")
+	log.Printf("Starting command '%v'\n", commandRegex.ReplaceAllString(commands[cmdNumber], ""))
 
-	if err := conn.WriteMessage(websocket.TextMessage, []byte("\033[2J\033[H")); err != nil {
+	if err := ws.WriteMessage(websocket.TextMessage, []byte("\033[2J\033[H")); err != nil {
 		log.Println("Error sending clear to websocket:", err)
 	}
 
 	cmdMutex.Lock()
 	cmdContext, cancelCommand = context.WithCancel(context.Background())
-	cmd = exec.CommandContext(cmdContext, "sh", "-c", commandRegex.ReplaceAllString(commands[command], ""))
+	cmd = exec.CommandContext(cmdContext, "sh", "-c", commandRegex.ReplaceAllString(commands[cmdNumber], ""))
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Printf("Error creating StdoutPipe for Cmd: %v\n", err)
@@ -285,73 +389,35 @@ func handleExecute(w http.ResponseWriter, r *http.Request) {
 	cmdMutex.Unlock()
 
 	lastKnownState = true
-	runButton().Render(w)
+	runningButton().Render(w)
 
-	go func() {
+	go executeCommand(stdoutPipe)
+}
 
-		cmdMutex.Lock()
-		if cmd == nil {
-			return
-		}
-		if err := cmd.Start(); err != nil {
-			log.Printf("Error starting Cmd: %v\n", err)
-			return
-		}
-		cmdMutex.Unlock()
+func executeStatusHandler(w http.ResponseWriter, r *http.Request) {
+	cmdMutex.Lock()
+	isCmdRunning := cmd != nil
+	cmdMutex.Unlock()
 
-		go func() {
-			var exitErr *exec.ExitError
-			if err := cmd.Wait(); errors.As(err, &exitErr) {
-				log.Println("command exited")
-				return
-			}
-			select {
-			case <-cmdContext.Done():
-				log.Println("already cancelled")
-				return
-			default:
-				stopCurrentCommand()
-				return
-			}
-		}()
+	if !isCmdRunning {
+		runningButton().Render(w)
+	} else {
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
 
-		reader := bufio.NewReader(stdoutPipe)
-		buffer := make([]byte, bufferSize)
-
-		for {
-			select {
-			case <-cmdContext.Done():
-				log.Println("cancelled")
-				return // Exit the goroutine if the context is canceled
-			default:
-				n, err := reader.Read(buffer)
-				if err != nil {
-					if err != io.EOF && !errors.Is(err, fs.ErrClosed) {
-						log.Printf("Error reading from StdoutPipe: %v\n", err)
-					}
-					return // Exit the goroutine if command complete
-				}
-
-				message := string(buffer[:n])
-				message = strings.ReplaceAll(message, "\n", "\n\r")
-				if err := conn.WriteMessage(websocket.TextMessage, []byte(message)); err != nil {
-					log.Println("Error writing to websocket:", err)
-					return
-				}
-			}
-		}
-	}()
+func stopCommandHandler(w http.ResponseWriter, r *http.Request) {
+	stopCurrentCommand()
+	log.Printf("Stopped command '%v'\n", commandRegex.ReplaceAllString(commands[cmdNumber], ""))
+	runningButton().Render(w)
 }
 
 func stopCurrentCommand() {
-	log.Println("stopping command")
 	cmdMutex.Lock()
-	log.Println("gained mutex")
 	defer cmdMutex.Unlock()
 
 	if cancelCommand != nil {
-		log.Println("cancelling command")
-		cancelCommand() // Cancel the context, which stops the command and exits the for loop
+		cancelCommand()
 		cancelCommand = nil
 	}
 
@@ -361,68 +427,4 @@ func stopCurrentCommand() {
 		}
 	}
 	cmd = nil
-	log.Println("stopped command")
-}
-
-var (
-	lastKnownState = false
-)
-
-func handleCommandStatus(w http.ResponseWriter, r *http.Request) {
-	cmdMutex.Lock()
-	isCmdRunning := cmd != nil
-	cmdMutex.Unlock()
-
-	if !isCmdRunning {
-		runButton().Render(w)
-	} else {
-		w.WriteHeader(http.StatusNoContent) // Send a 204 No Content to avoid unnecessary updates
-	}
-}
-
-func runButton() gomponents.Node {
-	cmdMutex.Lock()
-	isCmdRunning := cmd != nil
-	cmdMutex.Unlock()
-
-	if isCmdRunning {
-		return html.Div(
-			gomponents.Attr("hx-get", "/execute"),
-			gomponents.Attr("hx-trigger", "every 100ms"),
-			gomponents.Attr("hx-target", "#execute-button"),
-			stopButton(),
-		)
-	}
-
-	return html.Div(
-		executeButton(),
-	)
-}
-
-func newControlButton(buttonType string) gomponents.Node {
-	return gomponents.Group([]gomponents.Node{ // TODO: make these class based for the targets?
-		html.FormEl(
-			gomponents.Attr("id", fmt.Sprintf("%v-button", buttonType)),
-			gomponents.Attr("method", "post"),
-			gomponents.Attr("hx-post", fmt.Sprintf("/%v", buttonType)),
-			gomponents.Attr("hx-target", fmt.Sprintf("#%v-button", buttonType)),
-			html.Button(gomponents.Text(strings.Title(buttonType))),
-		),
-		html.FormEl(
-			gomponents.Attr("id", fmt.Sprintf("%v-button", buttonType)),
-			gomponents.Attr("method", "post"),
-			gomponents.Attr("hx-post", fmt.Sprintf("/%v", buttonType)),
-			gomponents.Attr("hx-target", fmt.Sprintf("#%v-button", buttonType)),
-			gomponents.Attr("hx-trigger", "keyup[key==' '] from:body"),
-			gomponents.Attr("hidden", "true"),
-		),
-	})
-}
-
-func stopButton() gomponents.Node {
-	return newControlButton("stop")
-}
-
-func executeButton() gomponents.Node {
-	return newControlButton("execute")
 }
