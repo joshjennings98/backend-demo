@@ -4,18 +4,18 @@ import (
 	"context"
 	"net/http"
 	"os/exec"
-	"regexp"
 	"strconv"
 
 	"github.com/gorilla/websocket"
 )
 
-// TODO: handle code blocks with highlight.js
-var (
-	commandRegex    = regexp.MustCompile(`^\$\s*`)
-	textLinkRegex   = regexp.MustCompile(`\[([^\]]+)\]\(([^)]+)\)`)
-	imageLinkRegex  = regexp.MustCompile(`^!\[([^\]]*)\]\(([^)]+)\)$`) // only allow image only slides
-	inlineCodeRegex = regexp.MustCompile("`([^`]*)`")
+const (
+	indexEndpoint   = "/"
+	initEndpoint    = "/init"
+	pageEndpoint    = "/page"
+	executeEndpoint = "/execute"
+
+	terminalBufferSize = 1024
 )
 
 var (
@@ -28,15 +28,6 @@ var (
 	}
 )
 
-const (
-	indexEndpoint   = "/"
-	initEndpoint    = "/init"
-	pageEndpoint    = "/page"
-	executeEndpoint = "/execute"
-
-	terminalBufferSize = 1024
-)
-
 func (m *DemoManager) indexHandler(w http.ResponseWriter, r *http.Request) {
 	if err := m.stopCurrentCommand(); err != nil {
 		m.logError(w, "error stopping command %v: %v", m.cleanedCommand(), err.Error())
@@ -44,7 +35,7 @@ func (m *DemoManager) indexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	m.setCommand(0)
-	m.indexHTML(m.commands, m.cmdNumber.Load(), m.isCommand(), m.isCmdRunning()).Render(w)
+	m.indexHTML().Render(w)
 }
 
 // TODO: improve this so that it is more seemless and doesn't cause any panics
@@ -78,7 +69,7 @@ func (m *DemoManager) incPageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if currCommand := m.getCommand(); prevCommand != currCommand {
-		m.contentDiv(m.commands, currCommand, m.isCommand(), false).Render(w)
+		m.contentDiv().Render(w)
 	} else {
 		w.WriteHeader(http.StatusNoContent)
 		return
@@ -100,7 +91,7 @@ func (m *DemoManager) decPageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if currCommand := m.getCommand(); prevCommand != currCommand {
-		m.contentDiv(m.commands, currCommand, m.isCommand(), false).Render(w)
+		m.contentDiv().Render(w)
 	} else {
 		w.WriteHeader(http.StatusNoContent)
 		return
@@ -126,7 +117,6 @@ func (m *DemoManager) setPageHandler(w http.ResponseWriter, r *http.Request) {
 
 	prevCommand := m.getCommand()
 	m.setCommand(int32(slideIndex))
-	isCmdRunning := m.isCmdRunning()
 
 	if currCommand := m.getCommand(); prevCommand != currCommand {
 		if err := m.stopCurrentCommand(); err != nil {
@@ -134,7 +124,7 @@ func (m *DemoManager) setPageHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		m.contentDiv(m.commands, currCommand, m.isCommand(), isCmdRunning).Render(w)
+		m.contentDiv().Render(w)
 	}
 
 	if err := m.termClear(); err != nil {

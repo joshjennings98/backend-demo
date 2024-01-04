@@ -19,7 +19,7 @@ func (m *DemoManager) cleanedCommandGomponent() gomponents.Node {
 	return html.P(gomponents.Raw(m.cleanedCommand()))
 }
 
-func (m *DemoManager) indexHTML(commands []string, idx int32, isCmd, isCmdRunning bool) gomponents.Node {
+func (m *DemoManager) indexHTML() gomponents.Node {
 	return html.HTML(
 		html.Head(
 			html.TitleEl(gomponents.Text("Backend Demo Tool")),
@@ -30,17 +30,21 @@ func (m *DemoManager) indexHTML(commands []string, idx int32, isCmd, isCmdRunnin
 			html.Link(html.Rel("stylesheet"), html.Href("https://cdn.jsdelivr.net/npm/xterm/css/xterm.css")),
 		),
 		html.Body(
-			m.contentDiv(commands, idx, isCmd, isCmdRunning),
+			m.contentDiv(),
 		),
 	)
 }
 
-func (m *DemoManager) contentDiv(commands []string, idx int32, isCmd, isCmdRunning bool) gomponents.Node {
+func (m *DemoManager) contentDiv() gomponents.Node {
+	cmd := m.getCommand()
+	isCmd := m.isCommand()
+	isCmdRunning := m.isCmdRunning()
+
 	return html.Div(
 		html.ID("command"),
 		html.Div(
 			html.ID("controls"),
-			slideSelect(commands, idx),
+			slideSelect(m.commands, cmd),
 			html.FormEl(
 				html.Class("control"),
 				hx.Delete(pageEndpoint),

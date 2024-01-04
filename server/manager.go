@@ -18,6 +18,14 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// TODO: handle code blocks with highlight.js
+var (
+	commandRegex    = regexp.MustCompile(`^\$\s*`)
+	textLinkRegex   = regexp.MustCompile(`\[([^\]]+)\]\(([^)]+)\)`)
+	imageLinkRegex  = regexp.MustCompile(`^!\[([^\]]*)\]\(([^)]+)\)$`) // only allow image only slides
+	inlineCodeRegex = regexp.MustCompile("`([^`]*)`")
+)
+
 type DemoManager struct {
 	ws            *websocket.Conn
 	commands      []string
