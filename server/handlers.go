@@ -39,7 +39,7 @@ const (
 
 func (m *DemoManager) indexHandler(w http.ResponseWriter, r *http.Request) {
 	if err := m.stopCurrentCommand(); err != nil {
-		m.LogError(w, "error stopping command %v: %v", m.cleanedCommand(), err.Error())
+		m.logError(w, "error stopping command %v: %v", m.cleanedCommand(), err.Error())
 		return
 	}
 
@@ -49,23 +49,23 @@ func (m *DemoManager) indexHandler(w http.ResponseWriter, r *http.Request) {
 
 // TODO: improve this so that it is more seemless and doesn't cause any panics
 func (m *DemoManager) initHandler(w http.ResponseWriter, r *http.Request) {
-	m.Log(w, "attempting to upgrade HTTP to websocket")
+	m.logInfo(w, "attempting to upgrade HTTP to websocket")
 
 	if m.ws != nil {
-		m.Log(w, "closing existing websocket")
+		m.logInfo(w, "closing existing websocket")
 		if err := m.ws.Close(); err != nil {
-			m.LogError(w, "error closing existing websocket: %v", err.Error())
+			m.logError(w, "error closing existing websocket: %v", err.Error())
 		}
 	}
 
 	var err error
 	m.ws, err = upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		m.LogError(w, "error upgrading to websocket: %v", err.Error())
+		m.logError(w, "error upgrading to websocket: %v", err.Error())
 		return
 	}
 
-	m.Log(w, "upgraded HTTP connection to websocket")
+	m.logInfo(w, "upgraded HTTP connection to websocket")
 }
 
 func (m *DemoManager) incPageHandler(w http.ResponseWriter, r *http.Request) {
@@ -73,7 +73,7 @@ func (m *DemoManager) incPageHandler(w http.ResponseWriter, r *http.Request) {
 	m.incCommand()
 
 	if err := m.stopCurrentCommand(); err != nil {
-		m.LogError(w, "error stopping command %v: %v", m.cleanedCommand(), err.Error())
+		m.logError(w, "error stopping command %v: %v", m.cleanedCommand(), err.Error())
 		return
 	}
 
@@ -85,7 +85,7 @@ func (m *DemoManager) incPageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := m.termClear(); err != nil {
-		m.LogError(w, "error sending clear to websocket: %v", err.Error())
+		m.logError(w, "error sending clear to websocket: %v", err.Error())
 		return
 	}
 }
@@ -95,7 +95,7 @@ func (m *DemoManager) decPageHandler(w http.ResponseWriter, r *http.Request) {
 	m.decCommand()
 
 	if err := m.stopCurrentCommand(); err != nil {
-		m.LogError(w, "error stopping command %v: %v", m.cleanedCommand(), err.Error())
+		m.logError(w, "error stopping command %v: %v", m.cleanedCommand(), err.Error())
 		return
 	}
 
@@ -107,20 +107,20 @@ func (m *DemoManager) decPageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := m.termClear(); err != nil {
-		m.LogError(w, "error sending clear to websocket: %v", err.Error())
+		m.logError(w, "error sending clear to websocket: %v", err.Error())
 		return
 	}
 }
 
 func (m *DemoManager) setPageHandler(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		m.LogError(w, "failed to parse form: %v", err.Error())
+		m.logError(w, "failed to parse form: %v", err.Error())
 		return
 	}
 
 	slideIndex, err := strconv.Atoi(r.FormValue("slideIndex"))
 	if err != nil {
-		m.LogError(w, "failed to parse slide index: %v", err.Error())
+		m.logError(w, "failed to parse slide index: %v", err.Error())
 		return
 	}
 
@@ -130,7 +130,7 @@ func (m *DemoManager) setPageHandler(w http.ResponseWriter, r *http.Request) {
 
 	if currCommand := m.getCommand(); prevCommand != currCommand {
 		if err := m.stopCurrentCommand(); err != nil {
-			m.LogError(w, "error stopping command %v: %v", m.cleanedCommand(), err.Error())
+			m.logError(w, "error stopping command %v: %v", m.cleanedCommand(), err.Error())
 			return
 		}
 
@@ -138,7 +138,7 @@ func (m *DemoManager) setPageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := m.termClear(); err != nil {
-		m.LogError(w, "error sending clear to websocket: %v", err.Error())
+		m.logError(w, "error sending clear to websocket: %v", err.Error())
 	}
 }
 
@@ -148,12 +148,12 @@ func (m *DemoManager) executeCommandHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	if err := m.stopCurrentCommand(); err != nil {
-		m.LogError(w, "error stopping command %v: %v", m.cleanedCommand(), err.Error())
+		m.logError(w, "error stopping command %v: %v", m.cleanedCommand(), err.Error())
 		return
 	}
 
 	if err := m.termClear(); err != nil {
-		m.LogError(w, "error sending clear to websocket: %v", err.Error())
+		m.logError(w, "error sending clear to websocket: %v", err.Error())
 	}
 
 	var cmd *exec.Cmd
@@ -161,7 +161,7 @@ func (m *DemoManager) executeCommandHandler(w http.ResponseWriter, r *http.Reque
 	cmd = exec.CommandContext(m.cmdContext, "sh", "-c", m.cleanedCommand())
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
-		m.LogError(w, "error creating stdout pipe for command %v: %v", m.cleanedCommand(), err.Error())
+		m.logError(w, "error creating stdout pipe for command %v: %v", m.cleanedCommand(), err.Error())
 		return
 	}
 	cmd.Stderr = cmd.Stdout
@@ -170,9 +170,9 @@ func (m *DemoManager) executeCommandHandler(w http.ResponseWriter, r *http.Reque
 	runningButton(true).Render(w)
 
 	go func() {
-		m.Log(w, "starting command '%v'", m.cleanedCommand())
+		m.logInfo(w, "starting command '%v'", m.cleanedCommand())
 		if err := m.executeCommand(stdoutPipe); err != nil {
-			m.LogError(w, "error executing command %v: %v", m.cleanedCommand(), err.Error())
+			m.logError(w, "error executing command %v: %v", m.cleanedCommand(), err.Error())
 		}
 		return
 	}()
@@ -188,7 +188,7 @@ func (m *DemoManager) executeStatusHandler(w http.ResponseWriter, r *http.Reques
 
 func (m *DemoManager) stopCommandHandler(w http.ResponseWriter, r *http.Request) {
 	if err := m.stopCurrentCommand(); err != nil {
-		m.LogError(w, "error stopping command %v: %v", m.cleanedCommand(), err.Error())
+		m.logError(w, "error stopping command %v: %v", m.cleanedCommand(), err.Error())
 		return
 	}
 

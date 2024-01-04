@@ -83,11 +83,11 @@ func (m *DemoManager) getCommand() int32 {
 	return (m.cmdNumber.Load()%numCommands + numCommands) % numCommands
 }
 
-func (m *DemoManager) Log(_ http.ResponseWriter, format string, v ...any) {
+func (m *DemoManager) logInfo(_ http.ResponseWriter, format string, v ...any) {
 	log.Printf(format, v...)
 }
 
-func (m *DemoManager) LogError(w http.ResponseWriter, format string, a ...any) {
+func (m *DemoManager) logError(w http.ResponseWriter, format string, a ...any) {
 	msg := fmt.Sprintf(format, a...)
 	log.Print(msg)
 	w.WriteHeader(http.StatusInternalServerError)
@@ -202,6 +202,6 @@ func (m *DemoManager) stopCurrentCommand() error {
 	}
 	m.cmd.Store(nil)
 
-	m.Log(nil, "stopped command '%v'", m.cleanedCommand())
+	m.logInfo(nil, "stopped command '%v'", m.cleanedCommand())
 	return nil
 }
