@@ -1,4 +1,4 @@
-module github.com/joshjennings98/backend-demo
+module github.com/joshjennings98/backend-demo/src
 
 go 1.21.5
 

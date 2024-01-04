@@ -36,7 +36,7 @@ type DemoManager struct {
 }
 
 func NewDemoManager(commandsFile string) (*DemoManager, error) {
-	contents, err := os.ReadFile("commands.txt")
+	contents, err := os.ReadFile(commandsFile)
 	if err != nil {
 		return nil, err
 	}
