@@ -22,7 +22,7 @@ func Start(commandsFile string) error {
 	r.HandleFunc(pageEndpoint, m.incPageHandler).
 		Methods(http.MethodPost)
 	r.HandleFunc(pageEndpoint, m.decPageHandler).
-		Methods(http.MethodDelete) // At least `PUT /page` is imdempotent :)
+		Methods(http.MethodDelete) // At least `PUT /page` is idempotent :)
 	r.HandleFunc(pageEndpoint, m.setPageHandler).
 		Methods(http.MethodPut)
 	r.HandleFunc(executeEndpoint, m.executeCommandHandler).
