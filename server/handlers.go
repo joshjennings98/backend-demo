@@ -19,11 +19,12 @@ import (
 )
 
 // TODO: handle code blocks with highlight.js
-// TODO: in the text blocks replace IMAGE ONLY with image, inline code with <code>, and links with <a>
-var commandRegex = regexp.MustCompile(`^\$\s*`)
-var imageRegex = regexp.MustCompile(`!\[(.*?)\]\((.*?)\)`)
-var linkRegex = regexp.MustCompile(`\[(.*?)\]\((.*?)\)`)
-var inlineCodeRegex = regexp.MustCompile("`(.*?)`")
+var (
+	commandRegex    = regexp.MustCompile(`^\$\s*`)
+	textLinkRegex   = regexp.MustCompile(`\[([^\]]+)\]\(([^)]+)\)`)
+	imageLinkRegex  = regexp.MustCompile(`^!\[([^\]]*)\]\(([^)]+)\)$`) // only allow image only slides
+	inlineCodeRegex = regexp.MustCompile("`([^`]*)`")
+)
 
 var (
 	upgrader = websocket.Upgrader{
@@ -99,7 +100,7 @@ func (m *DemoManager) indexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	m.setCommand(0)
-	indexHTML(m.commands, m.cmdNumber.Load(), m.isCommand(), m.isCmdRunning()).Render(w)
+	m.indexHTML(m.commands, m.cmdNumber.Load(), m.isCommand(), m.isCmdRunning()).Render(w)
 }
 
 func (m *DemoManager) initHandler(w http.ResponseWriter, r *http.Request) {
@@ -132,7 +133,7 @@ func (m *DemoManager) incPageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if currCommand := m.getCommand(); prevCommand != currCommand {
-		contentDiv(m.commands, currCommand, m.isCommand(), false).Render(w)
+		m.contentDiv(m.commands, currCommand, m.isCommand(), false).Render(w)
 	} else {
 		w.WriteHeader(http.StatusNoContent)
 		return
@@ -154,7 +155,7 @@ func (m *DemoManager) decPageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if currCommand := m.getCommand(); prevCommand != currCommand {
-		contentDiv(m.commands, currCommand, m.isCommand(), false).Render(w)
+		m.contentDiv(m.commands, currCommand, m.isCommand(), false).Render(w)
 	} else {
 		w.WriteHeader(http.StatusNoContent)
 		return
@@ -188,7 +189,7 @@ func (m *DemoManager) setPageHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		contentDiv(m.commands, currCommand, m.isCommand(), isCmdRunning).Render(w)
+		m.contentDiv(m.commands, currCommand, m.isCommand(), isCmdRunning).Render(w)
 	}
 
 	if err := m.termClear(); err != nil {
@@ -197,7 +198,26 @@ func (m *DemoManager) setPageHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *DemoManager) cleanedCommand() string {
-	return commandRegex.ReplaceAllString(m.commands[m.getCommand()], "")
+	contentString := m.commands[m.getCommand()]
+	if m.isCommand() {
+		return commandRegex.ReplaceAllString(contentString, "")
+	}
+
+	var output string
+	output = imageLinkRegex.ReplaceAllStringFunc(contentString, func(match string) string {
+		submatches := imageLinkRegex.FindStringSubmatch(match)
+		return fmt.Sprintf(`<img src="%v" alt="%v">`, submatches[2], submatches[1])
+	})
+	output = textLinkRegex.ReplaceAllStringFunc(output, func(match string) string {
+		submatches := textLinkRegex.FindStringSubmatch(match)
+		return fmt.Sprintf(`<a href="%v" target="_blank" rel="noopener noreferrer">%v</a>`, submatches[2], submatches[1])
+	})
+	output = inlineCodeRegex.ReplaceAllStringFunc(output, func(match string) string {
+		submatches := inlineCodeRegex.FindStringSubmatch(match)
+		return fmt.Sprintf(`<code>%v</code>`, submatches[1])
+	})
+
+	return output
 }
 
 func (m *DemoManager) waitForCommandExit() {
@@ -268,6 +288,10 @@ func (m *DemoManager) executeCommand(stdoutPipe io.Reader) error {
 }
 
 func (m *DemoManager) executeCommandHandler(w http.ResponseWriter, r *http.Request) {
+	if !m.isCommand() {
+		return
+	}
+
 	if err := m.stopCurrentCommand(); err != nil {
 		m.LogError(w, "error stopping command %v: %v", m.cleanedCommand(), err.Error())
 		return

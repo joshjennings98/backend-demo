@@ -15,7 +15,11 @@ func gomponentsIfElse(condition bool, ifBranch, elseBranch gomponents.Node) gomp
 	return elseBranch
 }
 
-func indexHTML(commands []string, idx int32, isCmd, isCmdRunning bool) gomponents.Node {
+func (m *DemoManager) cleanedCommandGomponent() gomponents.Node {
+	return html.P(gomponents.Raw(m.cleanedCommand()))
+}
+
+func (m *DemoManager) indexHTML(commands []string, idx int32, isCmd, isCmdRunning bool) gomponents.Node {
 	return html.HTML(
 		html.Head(
 			html.TitleEl(gomponents.Text("Backend Demo Tool")),
@@ -26,12 +30,12 @@ func indexHTML(commands []string, idx int32, isCmd, isCmdRunning bool) gomponent
 			html.Link(html.Rel("stylesheet"), html.Href("https://cdn.jsdelivr.net/npm/xterm/css/xterm.css")),
 		),
 		html.Body(
-			contentDiv(commands, idx, isCmd, isCmdRunning),
+			m.contentDiv(commands, idx, isCmd, isCmdRunning),
 		),
 	)
 }
 
-func contentDiv(commands []string, idx int32, isCmd, isCmdRunning bool) gomponents.Node {
+func (m *DemoManager) contentDiv(commands []string, idx int32, isCmd, isCmdRunning bool) gomponents.Node {
 	return html.Div(
 		html.ID("command"),
 		html.Div(
@@ -61,7 +65,7 @@ func contentDiv(commands []string, idx int32, isCmd, isCmdRunning bool) gomponen
 					html.Class("command-string"),
 					html.Class("text-string"),
 				),
-				gomponents.Text(commandRegex.ReplaceAllString(commands[idx], "")),
+				m.cleanedCommandGomponent(),
 			),
 		),
 		html.Div(

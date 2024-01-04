@@ -1,11 +1,12 @@
 this is \ 
-a presentation
+a [presentation](http://google.com)
 $ echo aaa && sleep 2 && echo bbb
+![hyperion](https://upload.wikimedia.org/wikipedia/en/7/73/Hyperion_cover.jpg)
 $ echo \ 
 hello \
 world
 $ watch -n 1 date
-this is some text
+this is `some` text
 $ ls /
 $ echo {} | jq
 $ adsadads
