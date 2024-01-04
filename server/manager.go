@@ -6,20 +6,18 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
-	"sync"
+	"sync/atomic"
 
 	"github.com/gorilla/websocket"
 )
 
 type DemoManager struct {
-	ws             *websocket.Conn
-	commands       []string
-	cmd            *exec.Cmd
-	cmdMutex       sync.Mutex
-	cmdNumber      int
-	cmdNumberMutex sync.Mutex
-	cmdContext     context.Context
-	cancelCommand  func()
+	ws            *websocket.Conn
+	commands      []string
+	cmd           atomic.Pointer[exec.Cmd]
+	cmdNumber     atomic.Int32
+	cmdContext    context.Context
+	cancelCommand func()
 }
 
 func NewDemoManager(commandsFile string) (*DemoManager, error) {
@@ -37,12 +35,6 @@ func NewDemoManager(commandsFile string) (*DemoManager, error) {
 	}
 
 	return &DemoManager{
-		commands:       commands,
-		cmd:            nil,
-		cmdMutex:       sync.Mutex{},
-		cmdNumber:      0,
-		cmdNumberMutex: sync.Mutex{},
-		cmdContext:     nil,
-		cancelCommand:  nil,
+		commands: commands,
 	}, nil
 }

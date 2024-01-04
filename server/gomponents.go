@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/maragudk/gomponents"
 	hx "github.com/maragudk/gomponents-htmx"
@@ -16,7 +15,7 @@ func gomponentsIfElse(condition bool, ifBranch, elseBranch gomponents.Node) gomp
 	return elseBranch
 }
 
-func indexHTML(commands []string, idx int, isCmdRunning bool) gomponents.Node {
+func indexHTML(commands []string, idx int32, isCmd, isCmdRunning bool) gomponents.Node {
 	return html.HTML(
 		html.Head(
 			html.TitleEl(gomponents.Text("Backend Demo Tool")),
@@ -27,13 +26,12 @@ func indexHTML(commands []string, idx int, isCmdRunning bool) gomponents.Node {
 			html.Link(html.Rel("stylesheet"), html.Href("https://cdn.jsdelivr.net/npm/xterm/css/xterm.css")),
 		),
 		html.Body(
-			contentDiv(commands, idx, isCmdRunning),
+			contentDiv(commands, idx, isCmd, isCmdRunning),
 		),
 	)
 }
 
-func contentDiv(commands []string, idx int, isCmdRunning bool) gomponents.Node {
-	isCommand := strings.HasPrefix(commands[idx], "$")
+func contentDiv(commands []string, idx int32, isCmd, isCmdRunning bool) gomponents.Node {
 	return html.Div(
 		html.ID("command"),
 		html.Div(
@@ -41,7 +39,7 @@ func contentDiv(commands []string, idx int, isCmdRunning bool) gomponents.Node {
 			slideSelect(commands, idx),
 			html.FormEl(
 				html.Class("control"),
-				hx.Post(decPageEndpoint),
+				hx.Delete(pageEndpoint),
 				hx.Swap("outerHTML"),
 				hx.Target("#command"),
 				hx.Trigger("click, keyup[key=='ArrowLeft'] from:body"),
@@ -49,7 +47,7 @@ func contentDiv(commands []string, idx int, isCmdRunning bool) gomponents.Node {
 			),
 			html.FormEl(
 				html.Class("control"),
-				hx.Post(incPageEndpoint),
+				hx.Post(pageEndpoint),
 				hx.Swap("outerHTML"),
 				hx.Target("#command"),
 				hx.Trigger("click, keyup[key=='ArrowRight'] from:body"),
@@ -59,7 +57,7 @@ func contentDiv(commands []string, idx int, isCmdRunning bool) gomponents.Node {
 		html.Div(
 			html.Div(
 				gomponentsIfElse(
-					isCommand,
+					isCmd,
 					html.Class("command-string"),
 					html.Class("text-string"),
 				),
@@ -68,7 +66,7 @@ func contentDiv(commands []string, idx int, isCmdRunning bool) gomponents.Node {
 		),
 		html.Div(
 			gomponents.If(
-				!isCommand,
+				!isCmd,
 				gomponents.Attr("hidden", "true"),
 			),
 			html.Div(
@@ -80,9 +78,9 @@ func contentDiv(commands []string, idx int, isCmdRunning bool) gomponents.Node {
 	)
 }
 
-func slideSelect(commands []string, selected int) gomponents.Node {
+func slideSelect(commands []string, selected int32) gomponents.Node {
 	var options []gomponents.Node
-	for i := range commands {
+	for i := int32(0); i < int32(len(commands)); i++ {
 		options = append(options, html.Option(
 			gomponents.Group([]gomponents.Node{
 				html.Value(fmt.Sprint(i)),
@@ -96,7 +94,7 @@ func slideSelect(commands []string, selected int) gomponents.Node {
 	}
 
 	return html.Select(
-		hx.Post(setPageEndpoint),
+		hx.Put(pageEndpoint),
 		hx.Trigger("change"),
 		hx.Target("#command"),
 		html.Name("slideIndex"),
@@ -119,27 +117,36 @@ func runningButton(isCmdRunning bool) gomponents.Node {
 	)
 }
 
-func controlButton(buttonType string) gomponents.Node {
-	return gomponents.Group([]gomponents.Node{
+func stopButton() gomponents.Node {
+	return html.Div(
+		html.ID("stop-button"),
 		html.FormEl(
-			html.ID(fmt.Sprintf("%v-button", buttonType)),
-			hx.Post(fmt.Sprintf("/%v", buttonType)),
-			hx.Target(fmt.Sprintf("#%v-button", buttonType)),
-			html.Button(gomponents.Text(buttonType)),
+			hx.Delete("/execute"),
+			hx.Target("#stop-button"),
+			html.Button(gomponents.Text("stop")),
 		),
 		html.FormEl(
-			hx.Post(fmt.Sprintf("/%v", buttonType)),
-			hx.Target(fmt.Sprintf("#%v-button", buttonType)),
+			hx.Delete("/execute"),
+			hx.Target("#stop-button"),
 			hx.Trigger("keyup[key==' '] from:body"),
 			gomponents.Attr("hidden", "true"),
 		),
-	})
-}
-
-func stopButton() gomponents.Node {
-	return controlButton(stopEndpoint[1:])
+	)
 }
 
 func executeButton() gomponents.Node {
-	return controlButton(executeEndpoint[1:])
+	return html.Div(
+		html.ID("execute-button"),
+		html.FormEl(
+			hx.Post("/execute"),
+			hx.Target("#execute-button"),
+			html.Button(gomponents.Text("execute")),
+		),
+		html.FormEl(
+			hx.Post("/execute"),
+			hx.Target("#execute-button"),
+			hx.Trigger("keyup[key==' '] from:body"),
+			gomponents.Attr("hidden", "true"),
+		),
+	)
 }
