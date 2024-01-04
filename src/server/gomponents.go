@@ -36,15 +36,12 @@ func (m *DemoManager) indexHTML() gomponents.Node {
 }
 
 func (m *DemoManager) contentDiv() gomponents.Node {
-	cmd := m.getCommand()
 	isCmd := m.isCommand()
-	isCmdRunning := m.isCmdRunning()
-
 	return html.Div(
 		html.ID("command"),
 		html.Div(
 			html.ID("controls"),
-			slideSelect(m.commands, cmd),
+			m.slideSelect(),
 			html.FormEl(
 				html.Class("control"),
 				hx.Delete(pageEndpoint),
@@ -81,14 +78,15 @@ func (m *DemoManager) contentDiv() gomponents.Node {
 				html.ID("terminal"),
 				hx.Preserve("true"),
 			),
-			runningButton(isCmdRunning),
+			m.runningButton(),
 		),
 	)
 }
 
-func slideSelect(commands []string, selected int32) gomponents.Node {
+func (m *DemoManager) slideSelect() gomponents.Node {
 	var options []gomponents.Node
-	for i := int32(0); i < int32(len(commands)); i++ {
+	selected := m.getCommand()
+	for i := int32(0); i < int32(len(m.commands)); i++ {
 		options = append(options, html.Option(
 			gomponents.Group([]gomponents.Node{
 				html.Value(fmt.Sprint(i)),
@@ -97,7 +95,7 @@ func slideSelect(commands []string, selected int32) gomponents.Node {
 					html.Selected(),
 				),
 			}),
-			gomponents.Text(fmt.Sprintf("Slide %d/%d", i+1, len(commands))),
+			gomponents.Text(fmt.Sprintf("Slide %d/%d", i+1, len(m.commands))),
 		))
 	}
 
@@ -110,8 +108,8 @@ func slideSelect(commands []string, selected int32) gomponents.Node {
 	)
 }
 
-func runningButton(isCmdRunning bool) gomponents.Node {
-	if isCmdRunning {
+func (m *DemoManager) runningButton() gomponents.Node {
+	if m.isCmdRunning() {
 		return html.Div(
 			hx.Get(executeEndpoint),
 			hx.Trigger("every 100ms"),

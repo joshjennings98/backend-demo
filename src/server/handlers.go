@@ -61,12 +61,12 @@ func (m *DemoManager) initHandler(w http.ResponseWriter, r *http.Request) {
 
 func (m *DemoManager) incPageHandler(w http.ResponseWriter, r *http.Request) {
 	prevCommand := m.getCommand()
-	m.incCommand()
-
 	if err := m.stopCurrentCommand(); err != nil {
 		m.logError(w, "error stopping command %v: %v", m.cleanedCommand(), err.Error())
 		return
 	}
+
+	m.incCommand()
 
 	if currCommand := m.getCommand(); prevCommand != currCommand {
 		m.contentDiv().Render(w)
@@ -83,12 +83,12 @@ func (m *DemoManager) incPageHandler(w http.ResponseWriter, r *http.Request) {
 
 func (m *DemoManager) decPageHandler(w http.ResponseWriter, r *http.Request) {
 	prevCommand := m.getCommand()
-	m.decCommand()
-
 	if err := m.stopCurrentCommand(); err != nil {
 		m.logError(w, "error stopping command %v: %v", m.cleanedCommand(), err.Error())
 		return
 	}
+
+	m.decCommand()
 
 	if currCommand := m.getCommand(); prevCommand != currCommand {
 		m.contentDiv().Render(w)
@@ -157,7 +157,7 @@ func (m *DemoManager) executeCommandHandler(w http.ResponseWriter, r *http.Reque
 	cmd.Stderr = cmd.Stdout
 	m.cmd.Store(cmd)
 
-	runningButton(true).Render(w)
+	m.runningButton().Render(w)
 
 	go func() {
 		m.logInfo(w, "starting command '%v'", m.cleanedCommand())
@@ -170,7 +170,7 @@ func (m *DemoManager) executeCommandHandler(w http.ResponseWriter, r *http.Reque
 
 func (m *DemoManager) executeStatusHandler(w http.ResponseWriter, r *http.Request) {
 	if running := m.isCmdRunning(); !running {
-		runningButton(running).Render(w)
+		m.runningButton().Render(w)
 	} else {
 		w.WriteHeader(http.StatusNoContent)
 	}
@@ -182,5 +182,5 @@ func (m *DemoManager) stopCommandHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	runningButton(false).Render(w)
+	m.runningButton().Render(w)
 }
