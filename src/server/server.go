@@ -12,22 +12,43 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var varPattern = regexp.MustCompile(`^\w+=\w+$`)
+var (
+	varPattern        = regexp.MustCompile(`^\w+=\w+$`)
+	varCommandPattern = regexp.MustCompile(`^(\w+)=(\$\((.+)\))$`)
+)
 
 func runCommands(preCommands []string) error {
 	for _, cmd := range preCommands {
 		log.Println("running pre-command:", cmd)
-		if varPattern.MatchString(cmd) {
+		if varCommandPattern.MatchString(cmd) {
+			if matches := varCommandPattern.FindStringSubmatch(cmd); len(matches) == 4 {
+				variable, command := matches[1], matches[3]
+
+				out, err := exec.Command("sh", "-c", command).Output()
+				if err != nil {
+					return fmt.Errorf("error executing command '%v': %v", command, err.Error())
+				}
+
+				err = os.Setenv(variable, strings.TrimSpace(string(out)))
+				if err != nil {
+					return fmt.Errorf("error setting env var '%v': %v", cmd, err.Error())
+				}
+			}
+		} else if varPattern.MatchString(cmd) {
 			parts := strings.SplitN(cmd, "=", 2)
-			if err := os.Setenv(parts[0], parts[1]); err != nil {
+
+			err := os.Setenv(parts[0], parts[1])
+			if err != nil {
 				return fmt.Errorf("error setting env var '%v': %v", cmd, err.Error())
 			}
 		} else {
-			if err := exec.Command("sh", "-c", cmd).Run(); err != nil {
+			err := exec.Command("sh", "-c", cmd).Run()
+			if err != nil {
 				return fmt.Errorf("error executing command '%v': %v", cmd, err.Error())
 			}
 		}
 	}
+
 	return nil
 }
 

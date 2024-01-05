@@ -1,4 +1,4 @@
-TEST=4
+TEST=$(echo 345)
 
 ---
 
