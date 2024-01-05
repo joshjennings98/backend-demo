@@ -22,6 +22,7 @@ select, button {
 
 img {
     max-height: 80vh;
+    min-height: 80vh;
 }
 
 .command-string {

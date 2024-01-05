@@ -2,13 +2,42 @@ package server
 
 import (
 	"fmt"
+	"log"
 	"net/http"
+	"os"
+	"os/exec"
+	"regexp"
+	"strings"
 
 	"github.com/gorilla/mux"
 )
 
+var varPattern = regexp.MustCompile(`^\w+=\w+$`)
+
+func runCommands(preCommands []string) error {
+	for _, cmd := range preCommands {
+		log.Println("running pre-command:", cmd)
+		if varPattern.MatchString(cmd) {
+			parts := strings.SplitN(cmd, "=", 2)
+			if err := os.Setenv(parts[0], parts[1]); err != nil {
+				return fmt.Errorf("error setting env var '%v': %v", cmd, err.Error())
+			}
+		} else {
+			if err := exec.Command("sh", "-c", cmd).Run(); err != nil {
+				return fmt.Errorf("error executing command '%v': %v", cmd, err.Error())
+			}
+		}
+	}
+	return nil
+}
+
 func Start(commandsFile string) error {
 	m, err := NewDemoManager(commandsFile)
+	if err != nil {
+		return err
+	}
+
+	err = runCommands(m.preCommands)
 	if err != nil {
 		return err
 	}
@@ -33,7 +62,7 @@ func Start(commandsFile string) error {
 		Methods(http.MethodDelete)
 
 	http.Handle(indexEndpoint, r)
-	fmt.Println("Server is running on http://localhost:8080")
+	log.Println("Server is running on http://localhost:8080")
 	http.ListenAndServe(":8080", nil)
 
 	return nil

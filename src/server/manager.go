@@ -24,10 +24,12 @@ var (
 	textLinkRegex   = regexp.MustCompile(`\[([^\]]+)\]\(([^)]+)\)`)
 	imageLinkRegex  = regexp.MustCompile(`^!\[([^\]]*)\]\(([^)]+)\)$`) // only allow image only slides
 	inlineCodeRegex = regexp.MustCompile("`([^`]*)`")
+	hrRegex         = regexp.MustCompile(`\-\-\-+`)
 )
 
 type DemoManager struct {
 	ws            *websocket.Conn
+	preCommands   []string
 	commands      []string
 	cmd           atomic.Pointer[exec.Cmd]
 	cmdNumber     atomic.Int32
@@ -41,16 +43,27 @@ func NewDemoManager(commandsFile string) (*DemoManager, error) {
 		return nil, err
 	}
 
-	var commands []string
+	isPreCommands := true
+	var commands, preCommands []string
 	split := strings.Split(regexp.MustCompile(`\\\s*\n`).ReplaceAllString(string(contents), ""), "\n")
 	for i := range split {
-		if strings.TrimSpace(split[i]) != "" {
-			commands = append(commands, split[i])
+		if s := split[i]; strings.TrimSpace(s) != "" {
+			if hrRegex.MatchString(s) {
+				isPreCommands = false
+				continue
+			}
+
+			if isPreCommands {
+				preCommands = append(preCommands, split[i])
+			} else {
+				commands = append(commands, split[i])
+			}
 		}
 	}
 
 	return &DemoManager{
-		commands: commands,
+		preCommands: preCommands,
+		commands:    commands,
 	}, nil
 }
 
