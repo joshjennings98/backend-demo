@@ -18,13 +18,13 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// TODO: handle code blocks with highlight.js
 var (
-	commandRegex    = regexp.MustCompile(`^\$\s*`)
-	textLinkRegex   = regexp.MustCompile(`\[([^\]]+)\]\(([^)]+)\)`)
-	imageLinkRegex  = regexp.MustCompile(`^!\[([^\]]*)\]\(([^)]+)\)$`) // only allow image only slides
-	inlineCodeRegex = regexp.MustCompile("`([^`]*)`")
-	hrRegex         = regexp.MustCompile(`\-\-\-+`)
+	commandRegex       = regexp.MustCompile(`^\$\s*`)
+	textLinkRegex      = regexp.MustCompile(`!{0,1}\[([^\]]+)\]\(([^)]+)\)`)
+	imageLinkRegex     = regexp.MustCompile(`^!\[([^\]]*)\]\(([^)]+)\)$`) // only allow image only slides
+	inlineCodeRegex    = regexp.MustCompile("`([^`]*)`")
+	multilineCodeRegex = regexp.MustCompile("```(.*)\n((?s).*)\n```")
+	hrRegex            = regexp.MustCompile(`\-+`)
 )
 
 type DemoManager struct {
@@ -43,12 +43,38 @@ func NewDemoManager(commandsFile string) (*DemoManager, error) {
 		return nil, err
 	}
 
+	insideCodeBlock := false
 	isPreCommands := true
+
+	var currentCommand strings.Builder
 	var commands, preCommands []string
+
 	split := strings.Split(regexp.MustCompile(`\\\s*\n`).ReplaceAllString(string(contents), ""), "\n")
+
 	for i := range split {
-		if s := split[i]; strings.TrimSpace(s) != "" {
-			if hrRegex.MatchString(s) {
+		line := split[i]
+		trimmed := strings.TrimSpace(line)
+
+		if strings.HasPrefix(trimmed, "```") {
+			if insideCodeBlock {
+				currentCommand.WriteString("\n```")
+				commands = append(commands, currentCommand.String())
+				insideCodeBlock = false
+				currentCommand.Reset()
+			} else {
+				currentCommand.WriteString(line)
+				insideCodeBlock = true
+			}
+			continue
+		}
+
+		if insideCodeBlock {
+			if currentCommand.Len() > 0 {
+				currentCommand.WriteString("\n")
+			}
+			currentCommand.WriteString(line)
+		} else if trimmed != "" {
+			if hrRegex.MatchString(line) {
 				isPreCommands = false
 				continue
 			}
@@ -122,7 +148,11 @@ func (m *DemoManager) cleanedCommand() string {
 	}
 
 	var output string
-	output = imageLinkRegex.ReplaceAllStringFunc(contentString, func(match string) string {
+	output = multilineCodeRegex.ReplaceAllStringFunc(contentString, func(match string) string {
+		submatches := multilineCodeRegex.FindStringSubmatch(match)
+		return fmt.Sprintf("<pre class=\"language-%v\"><code>\n%v\n</code></pre>", submatches[1], submatches[2])
+	})
+	output = imageLinkRegex.ReplaceAllStringFunc(output, func(match string) string {
 		submatches := imageLinkRegex.FindStringSubmatch(match)
 		return fmt.Sprintf(`<img src="%v" alt="%v">`, submatches[2], submatches[1])
 	})

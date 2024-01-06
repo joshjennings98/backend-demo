@@ -34,5 +34,18 @@ window.addEventListener('load', function () {
     }
 
     initWebSocket(); 
-});
 
+    function highlightjs() {
+        const observer = new MutationObserver((mutations, obs) => {
+            hljs.highlightAll();
+        });
+
+        const config = {
+            childList: true,
+        };
+
+        observer.observe(document.body, config);
+    }
+
+    highlightjs();
+});

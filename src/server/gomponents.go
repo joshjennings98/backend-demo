@@ -24,10 +24,12 @@ func (m *DemoManager) indexHTML() gomponents.Node {
 		html.Head(
 			html.TitleEl(gomponents.Text("Backend Demo Tool")),
 			html.Script(html.Src("static/main.js")),
+			html.Script(html.Src("https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js")),
 			html.Script(html.Src("https://unpkg.com/htmx.org")),
 			html.Script(html.Src("https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js")),
 			html.Link(html.Rel("stylesheet"), html.Href("static/main.css")),
 			html.Link(html.Rel("stylesheet"), html.Href("https://cdn.jsdelivr.net/npm/xterm/css/xterm.css")),
+			html.Link(html.Rel("stylesheet"), html.Href("https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css")),
 		),
 		html.Body(
 			m.contentDiv(),

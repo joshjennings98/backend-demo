@@ -58,3 +58,7 @@ img {
 .xterm-screen {
     padding: 10px;
 }
+
+.hljs {
+    background: none !important;
+}
