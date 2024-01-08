@@ -17,34 +17,58 @@ var (
 	varCommandPattern = regexp.MustCompile(`^(\w+)=(\$\((.+)\))$`)
 )
 
+func setCommandToVar(cmd string) error {
+	if matches := varCommandPattern.FindStringSubmatch(cmd); len(matches) == 4 {
+		variable, command := matches[1], matches[3]
+
+		out, err := exec.Command("sh", "-c", command).Output()
+		if err != nil {
+			return fmt.Errorf("error executing command '%v': %v", command, err.Error())
+		}
+
+		err = os.Setenv(variable, strings.TrimSpace(string(out)))
+		if err != nil {
+			return fmt.Errorf("error setting env var '%v': %v", cmd, err.Error())
+		}
+	}
+
+	return nil
+}
+
+func setVar(cmd string) error {
+	parts := strings.SplitN(cmd, "=", 2)
+
+	err := os.Setenv(parts[0], parts[1])
+	if err != nil {
+		return fmt.Errorf("error setting env var '%v': %v", cmd, err.Error())
+	}
+
+	return nil
+}
+
+func runCommand(cmd string) error {
+	err := exec.Command("sh", "-c", cmd).Run()
+	if err != nil {
+		return fmt.Errorf("error executing command '%v': %v", cmd, err.Error())
+	}
+
+	return nil
+}
+
 func runCommands(preCommands []string) error {
 	for _, cmd := range preCommands {
 		log.Println("running pre-command:", cmd)
 		if varCommandPattern.MatchString(cmd) {
-			if matches := varCommandPattern.FindStringSubmatch(cmd); len(matches) == 4 {
-				variable, command := matches[1], matches[3]
-
-				out, err := exec.Command("sh", "-c", command).Output()
-				if err != nil {
-					return fmt.Errorf("error executing command '%v': %v", command, err.Error())
-				}
-
-				err = os.Setenv(variable, strings.TrimSpace(string(out)))
-				if err != nil {
-					return fmt.Errorf("error setting env var '%v': %v", cmd, err.Error())
-				}
+			if err := setCommandToVar(cmd); err != nil {
+				return err
 			}
 		} else if varPattern.MatchString(cmd) {
-			parts := strings.SplitN(cmd, "=", 2)
-
-			err := os.Setenv(parts[0], parts[1])
-			if err != nil {
-				return fmt.Errorf("error setting env var '%v': %v", cmd, err.Error())
+			if err := setVar(cmd); err != nil {
+				return err
 			}
 		} else {
-			err := exec.Command("sh", "-c", cmd).Run()
-			if err != nil {
-				return fmt.Errorf("error executing command '%v': %v", cmd, err.Error())
+			if err := runCommand(cmd); err != nil {
+				return err
 			}
 		}
 	}

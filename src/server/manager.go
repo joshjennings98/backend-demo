@@ -24,7 +24,7 @@ var (
 	imageLinkRegex     = regexp.MustCompile(`^!\[([^\]]*)\]\(([^)]+)\)$`) // only allow image only slides
 	inlineCodeRegex    = regexp.MustCompile("`([^`]*)`")
 	multilineCodeRegex = regexp.MustCompile("```(.*)\n((?s).*)\n```")
-	hrRegex            = regexp.MustCompile(`\-+`)
+	hrRegex            = regexp.MustCompile(`^\-+`)
 )
 
 type DemoManager struct {
