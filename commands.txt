@@ -1,39 +1,34 @@
-[TEXT]
-This is a presentation
+TEST=$(echo 345)
 
-[COMMAND]
-echo Hello \
-World.
+---
 
-echo -n "bbbbbb\nbbb\n"
-date
+this is \ 
+a ![presentation](http://google.com)
 
-[COMMAND]
-echo '{ "apple":"orange" }' | jq
+$ echo aaa && sleep 2 && echo bbb
 
-[TEXT]
-This is a [text](http://www.google.com) slide with a link.
-Test
-TEST
+$ echo $TEST
 
-[IMAGE]
-https://upload.wikimedia.org/wikipedia/en/7/73/Hyperion_cover.jpg
+```python
+def main():
+    print("hello world")
+```
 
-[COMMAND]
-ping -c 4 google.com
+![hyperion](https://upload.wikimedia.org/wikipedia/en/7/73/Hyperion_cover.jpg)
 
-[CODE]
-package main
+$ echo \ 
+hello \
+world
 
-import "fmt"
+$ watch -n 1 date
 
-func main() {
-    fmt.Println("hello world")
-}
+this is `some` text
 
-[TEXT]
-This is another `text` slide.
-APPLES ARE APPLY.
+$ ls /
 
-[COMMAND]
-ls -l
+$ echo {} | jq
+
+$ adsadads
+
+$ ls -R /
+
