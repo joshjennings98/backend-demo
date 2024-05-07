@@ -2,7 +2,7 @@
 
 Present backend demos in a powerpoint-like format.
 
-## Usage
+## Creating a presentation
 
 Write a command file `commands.txt` like this:
 
@@ -35,6 +35,10 @@ Pass it as an argument to `backend_demo`:
 ```
 backend_demo -c commands.txt
 ```
+
+Another example can be found in [commands.txt](./commands.txt).
+
+## Usage
 
 Use the mouse button to go forward and back or select a slide via the dropdown menu.
 
