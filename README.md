@@ -28,7 +28,7 @@ func main() {
 ` ``
 ```
 
-One line per slide to keep things simple (although you can do multiple lines with backslashes or `<br>.
+One line per slide to keep things simple (although you can do multiple lines with backslashes or `<br>`.
 
 Pass it as an argument to `backend_demo`:
 
