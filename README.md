@@ -46,5 +46,10 @@ Alternatively use the arrow keys for forward and back and the space bar to execu
 
 ## Todo
 
-* Formatting of plain slides (links, images, etc.) and code block slides
 * Add tests and verify behavior
+    * Add tests
+    * Fix CI so tests run
+* Add releases etc.
+    * Add goreleaser
+    * Add nix flake
+    * Add release CI
