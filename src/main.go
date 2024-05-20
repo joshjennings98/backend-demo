@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 
@@ -17,7 +18,7 @@ func main() {
 		log.Fatal("commands file must be provided via -c/-commands")
 	}
 
-	err := server.Start(commands)
+	err := server.Start(context.Background(), commands)
 	if err != nil {
 		log.Fatal(err)
 	}

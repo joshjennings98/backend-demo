@@ -15,38 +15,51 @@ func gomponentsIfElse(condition bool, ifBranch, elseBranch gomponents.Node) gomp
 	return elseBranch
 }
 
-func (m *DemoManager) cleanedCommandGomponent() gomponents.Node {
-	return html.P(gomponents.Raw(m.cleanedCommand()))
+func cleanedCommandGomponent(command string) gomponents.Node {
+	return html.P(gomponents.Raw(command))
 }
 
-func (m *DemoManager) indexHTML() gomponents.Node {
+func indexHTML(content gomponents.Node) gomponents.Node {
 	return html.HTML(
 		html.Head(
 			html.TitleEl(gomponents.Text("Backend Demo Tool")),
 			html.Script(html.Src("static/main.js")),
-			html.Script(html.Src("https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js")),
-			html.Script(html.Src("https://unpkg.com/htmx.org")),
-			html.Script(html.Src("https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js")),
+			html.Script(html.Src("static/highlight.js")),
+			html.Script(html.Src("static/htmx.js")),
+			html.Script(html.Src("static/xterm.js")),
 			html.Link(html.Rel("stylesheet"), html.Href("static/main.css")),
-			html.Link(html.Rel("stylesheet"), html.Href("https://cdn.jsdelivr.net/npm/xterm/css/xterm.css")),
-			html.Link(html.Rel("stylesheet"), html.Href("https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css")),
+			html.Link(html.Rel("stylesheet"), html.Href("static/xterm.css")),
+			html.Link(html.Rel("stylesheet"), html.Href("static/highlight.css")),
 		),
 		html.Body(
-			m.contentDiv(),
+			content,
 		),
 	)
 }
 
-func (m *DemoManager) contentDiv() gomponents.Node {
-	isCmd := m.isCommand()
+func nextSlide(i, total int) (j int) {
+	j = (i + 1) % total
+	return
+}
+
+func prevSlide(i, total int) (j int) {
+	j = (((i-1)%total + total) % total)
+	if j > 0 {
+		return
+	}
+	j *= -1
+	return
+}
+
+func contentDiv(slideIdx, totalSlides int, command *slide, isCmdRunning bool) gomponents.Node {
 	return html.Div(
 		html.ID("command"),
 		html.Div(
 			html.ID("controls"),
-			m.slideSelect(),
+			slideSelect(slideIdx, totalSlides),
 			html.FormEl(
 				html.Class("control"),
-				hx.Delete(pageEndpoint),
+				hx.Get(fmt.Sprintf("/slides/%v", prevSlide(slideIdx, totalSlides))),
 				hx.Swap("outerHTML"),
 				hx.Target("#command"),
 				hx.Trigger("click, keyup[key=='ArrowLeft'] from:body"),
@@ -54,7 +67,7 @@ func (m *DemoManager) contentDiv() gomponents.Node {
 			),
 			html.FormEl(
 				html.Class("control"),
-				hx.Post(pageEndpoint),
+				hx.Get(fmt.Sprintf("/slides/%v", nextSlide(slideIdx, totalSlides))),
 				hx.Swap("outerHTML"),
 				hx.Target("#command"),
 				hx.Trigger("click, keyup[key=='ArrowRight'] from:body"),
@@ -64,45 +77,44 @@ func (m *DemoManager) contentDiv() gomponents.Node {
 		html.Div(
 			html.Div(
 				gomponentsIfElse(
-					isCmd,
+					command.slideType == slideTypeCommand,
 					html.Class("command-string"),
 					html.Class("text-string"),
 				),
-				m.cleanedCommandGomponent(),
+				cleanedCommandGomponent(command.content),
 			),
 		),
 		html.Div(
 			gomponents.If(
-				!isCmd,
+				command.slideType != slideTypeCommand,
 				gomponents.Attr("hidden", "true"),
 			),
 			html.Div(
 				html.ID("terminal"),
 				hx.Preserve("true"),
 			),
-			m.runningButton(),
+			runningButton(command.id, isCmdRunning),
 		),
 	)
 }
 
-func (m *DemoManager) slideSelect() gomponents.Node {
+func slideSelect(slideIdx, totalSlides int) gomponents.Node {
 	var options []gomponents.Node
-	selected := m.getCommand()
-	for i := int32(0); i < int32(len(m.commands)); i++ {
+	for i := 0; i < totalSlides; i++ {
 		options = append(options, html.Option(
 			gomponents.Group([]gomponents.Node{
 				html.Value(fmt.Sprint(i)),
 				gomponents.If(
-					i == selected,
+					i == slideIdx,
 					html.Selected(),
 				),
 			}),
-			gomponents.Text(fmt.Sprintf("Slide %d/%d", i+1, len(m.commands))),
+			gomponents.Text(fmt.Sprintf("Slide %d/%d", i+1, totalSlides)),
 		))
 	}
 
 	return html.Select(
-		hx.Put(pageEndpoint),
+		hx.Get(fmt.Sprintf("/slides/%v", slideIdx)),
 		hx.Trigger("change"),
 		hx.Target("#command"),
 		html.Name("slideIndex"),
@@ -110,31 +122,31 @@ func (m *DemoManager) slideSelect() gomponents.Node {
 	)
 }
 
-func (m *DemoManager) runningButton() gomponents.Node {
-	if m.isCmdRunning() {
+func runningButton(idx int, isCmdRunning bool) gomponents.Node {
+	if isCmdRunning {
 		return html.Div(
-			hx.Get(executeEndpoint),
+			hx.Get(fmt.Sprintf("/commands/%v/", idx)),
 			hx.Trigger("every 100ms"),
 			hx.Target("#execute-button"),
-			stopButton(),
+			stopButton(idx),
 		)
 	}
 
 	return html.Div(
-		executeButton(),
+		executeButton(idx),
 	)
 }
 
-func stopButton() gomponents.Node {
+func stopButton(idx int) gomponents.Node {
 	return html.Div(
 		html.ID("stop-button"),
 		html.FormEl(
-			hx.Delete("/execute"),
+			hx.Delete(fmt.Sprintf("/commands/%v/", idx)),
 			hx.Target("#stop-button"),
 			html.Button(gomponents.Text("stop")),
 		),
 		html.FormEl(
-			hx.Delete("/execute"),
+			hx.Delete(fmt.Sprintf("/commands/%v/", idx)),
 			hx.Target("#stop-button"),
 			hx.Trigger("keyup[key==' '] from:body"),
 			gomponents.Attr("hidden", "true"),
@@ -142,16 +154,16 @@ func stopButton() gomponents.Node {
 	)
 }
 
-func executeButton() gomponents.Node {
+func executeButton(idx int) gomponents.Node {
 	return html.Div(
 		html.ID("execute-button"),
 		html.FormEl(
-			hx.Post("/execute"),
+			hx.Post(fmt.Sprintf("/commands/%v/", idx)),
 			hx.Target("#execute-button"),
 			html.Button(gomponents.Text("execute")),
 		),
 		html.FormEl(
-			hx.Post("/execute"),
+			hx.Post(fmt.Sprintf("/commands/%v/", idx)),
 			hx.Target("#execute-button"),
 			hx.Trigger("keyup[key==' '] from:body"),
 			gomponents.Attr("hidden", "true"),

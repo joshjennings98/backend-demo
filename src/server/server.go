@@ -1,114 +1,184 @@
 package server
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"regexp"
 	"strings"
+	"sync"
+)
 
-	"github.com/gorilla/mux"
+const (
+	indexEndpoint         = "GET /presentation"
+	initEndpoint          = "GET /init"
+	pageEndpoint          = "GET /slides/{id}/"
+	startCommandEndpoint  = "POST /commands/{id}/"
+	statusCommandEndpoint = "GET /commands/{id}/"
+	stopCommandEndpoint   = "DELETE /commands/{id}/"
 )
 
 var (
-	varPattern        = regexp.MustCompile(`^\w+=\w+$`)
-	varCommandPattern = regexp.MustCompile(`^(\w+)=(\$\((.+)\))$`)
+	hrRegex = regexp.MustCompile(`^\-+`)
 )
 
-func setCommandToVar(cmd string) error {
-	if matches := varCommandPattern.FindStringSubmatch(cmd); len(matches) == 4 {
-		variable, command := matches[1], matches[3]
-
-		out, err := exec.Command("sh", "-c", command).Output()
-		if err != nil {
-			return fmt.Errorf("error executing command '%v': %v", command, err.Error())
-		}
-
-		err = os.Setenv(variable, strings.TrimSpace(string(out)))
-		if err != nil {
-			return fmt.Errorf("error setting env var '%v': %v", cmd, err.Error())
-		}
-	}
-
-	return nil
+type server struct {
+	preCommands    []string
+	slides         []*slide
+	commandManager *commandManager
 }
 
-func setVar(cmd string) error {
-	parts := strings.SplitN(cmd, "=", 2)
-
-	err := os.Setenv(parts[0], parts[1])
-	if err != nil {
-		return fmt.Errorf("error setting env var '%v': %v", cmd, err.Error())
-	}
-
-	return nil
+func (s *server) getPreCommands() []string {
+	return s.preCommands
 }
 
-func runCommand(cmd string) error {
-	err := exec.Command("sh", "-c", cmd).Run()
-	if err != nil {
-		return fmt.Errorf("error executing command '%v': %v", cmd, err.Error())
-	}
-
-	return nil
+func (s *server) getSlide(idx int) *slide {
+	return s.slides[idx]
 }
 
-func runCommands(preCommands []string) error {
-	for _, cmd := range preCommands {
+func (s *server) totalSlides() int {
+	return len(s.slides)
+}
+
+func (s *server) parsePreCommands(contents []string) (i int, err error) {
+	for !hrRegex.MatchString(contents[i]) {
+		s.preCommands = append(s.preCommands, contents[i])
+		i++
+	}
+	return
+}
+
+func (s *server) addSlide(content string, t slideType) {
+	s.slides = append(s.slides, &slide{
+		id:        len(s.slides),
+		content:   content,
+		slideType: t,
+	})
+}
+
+func (s *server) initialise(ctx context.Context) (err error) {
+	for _, cmd := range s.getPreCommands() {
 		log.Println("running pre-command:", cmd)
 		if varCommandPattern.MatchString(cmd) {
 			if err := setCommandToVar(cmd); err != nil {
+				err = fmt.Errorf("could not set command to var '%v': %v", cmd, err.Error())
 				return err
 			}
 		} else if varPattern.MatchString(cmd) {
 			if err := setVar(cmd); err != nil {
+				err = fmt.Errorf("could set variable '%v': %v", cmd, err.Error())
 				return err
 			}
 		} else {
 			if err := runCommand(cmd); err != nil {
+				err = fmt.Errorf("could not execute pre-command '%v': %v", cmd, err.Error())
 				return err
 			}
 		}
 	}
 
-	return nil
+	return
 }
 
-func Start(commandsFile string) error {
-	m, err := NewDemoManager(commandsFile)
+func (s *server) parseSlides(contents []string, startIdx int) (err error) {
+	insideCodeBlock := false
+	var currentCommand strings.Builder
+
+	contents = contents[startIdx+1:]
+
+	for i := range contents {
+		line := contents[i]
+		trimmed := strings.TrimSpace(line)
+
+		if strings.HasPrefix(trimmed, "```") {
+			if insideCodeBlock {
+				currentCommand.WriteString("\n```")
+				s.addSlide(currentCommand.String(), slideTypeCodeblock)
+				insideCodeBlock = false
+				currentCommand.Reset()
+			} else {
+				currentCommand.WriteString(line)
+				insideCodeBlock = true
+			}
+			continue
+		}
+
+		if insideCodeBlock {
+			if currentCommand.Len() > 0 {
+				currentCommand.WriteString("\n")
+			}
+			currentCommand.WriteString(line)
+			continue
+		}
+
+		switch {
+		case trimmed == "":
+		case strings.HasPrefix(trimmed, "$ "):
+			s.addSlide(strings.TrimPrefix(trimmed, "$ "), slideTypeCommand)
+		default:
+			s.addSlide(trimmed, slideTypePlain)
+		}
+	}
+
+	return
+}
+
+func NewServer(presentationPath string) (s IServer, err error) {
+	contents, err := os.ReadFile(presentationPath)
+	if err != nil {
+		return
+	}
+
+	s = &server{
+		commandManager: &commandManager{
+			mu: sync.Mutex{},
+		},
+	}
+
+	slideContent := strings.Split(regexp.MustCompile(`\\\s*\n`).ReplaceAllString(string(contents), ""), "\n")
+
+	startIdx, err := s.parsePreCommands(slideContent)
+	if err != nil {
+		err = errors.New("could not parse pre-commands")
+		return
+	}
+
+	err = s.parseSlides(slideContent, startIdx)
+	if err != nil {
+		err = errors.New("could not parse slides")
+		return
+	}
+
+	return
+}
+
+func Start(ctx context.Context, presentationPath string) error {
+	m, err := NewServer(presentationPath)
 	if err != nil {
 		return err
 	}
 
-	err = runCommands(m.preCommands)
+	err = m.initialise(ctx)
 	if err != nil {
 		return err
 	}
 
-	fs := http.FileServer(http.Dir("static"))
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
+	r := http.NewServeMux()
 
-	r := mux.NewRouter()
 	r.HandleFunc(indexEndpoint, m.indexHandler)
 	r.HandleFunc(initEndpoint, m.initHandler)
-	r.HandleFunc(pageEndpoint, m.incPageHandler).
-		Methods(http.MethodPost)
-	r.HandleFunc(pageEndpoint, m.decPageHandler).
-		Methods(http.MethodDelete) // At least `PUT /page` is idempotent :)
-	r.HandleFunc(pageEndpoint, m.setPageHandler).
-		Methods(http.MethodPut)
-	r.HandleFunc(executeEndpoint, m.executeCommandHandler).
-		Methods(http.MethodPost)
-	r.HandleFunc(executeEndpoint, m.executeStatusHandler).
-		Methods(http.MethodGet)
-	r.HandleFunc(executeEndpoint, m.stopCommandHandler).
-		Methods(http.MethodDelete)
+	r.HandleFunc(pageEndpoint, m.showSlideHandler)
+	r.HandleFunc(startCommandEndpoint, m.startCommandHandler)
+	r.HandleFunc(statusCommandEndpoint, m.statusCommandHandler)
+	r.HandleFunc(stopCommandEndpoint, m.stopCommandHandler)
 
-	http.Handle(indexEndpoint, r)
-	log.Println("Server is running on http://localhost:8080")
-	http.ListenAndServe(":8080", nil)
+	r.HandleFunc("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))).ServeHTTP)
+
+	log.Println("Server is running on http://localhost:8080/presentation")
+	_ = http.ListenAndServe("localhost:8080", r)
 
 	return nil
 }
