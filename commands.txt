@@ -3,7 +3,7 @@ TEST=$(echo 345)
 ---
 
 this is \ 
-a ![presentation](http://google.com)
+a [presentation](http://google.com)
 
 $ echo aaa && sleep 2 && echo bbb
 
