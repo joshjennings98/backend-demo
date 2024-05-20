@@ -53,3 +53,4 @@ Alternatively use the arrow keys for forward and back and the space bar to execu
     * Add goreleaser
     * Add nix flake
     * Add release CI
+* Make sure that local images work
