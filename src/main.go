@@ -4,21 +4,30 @@ import (
 	"context"
 	"flag"
 	"log"
+	"log/slog"
+	"os"
 
 	"github.com/joshjennings98/backend-demo/src/server"
 )
 
 func main() {
-	var commands string
-	flag.StringVar(&commands, "commands", "", "Commands file")
-	flag.StringVar(&commands, "c", "", "Commands file")
+	var commandsFile string
+	flag.StringVar(&commandsFile, "commands", "", "Commands file")
+	flag.StringVar(&commandsFile, "c", "", "Commands file")
 	flag.Parse()
 
-	if commands == "" {
+	if commandsFile == "" {
 		log.Fatal("commands file must be provided via -c/-commands")
 	}
 
-	err := server.Start(context.Background(), commands)
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
+	s, err := server.NewServer(logger, commandsFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = s.Start(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}

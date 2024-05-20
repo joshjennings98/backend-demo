@@ -23,6 +23,7 @@ func indexHTML(content gomponents.Node) gomponents.Node {
 	return html.HTML(
 		html.Head(
 			html.TitleEl(gomponents.Text("Backend Demo Tool")),
+			html.Meta(html.Name("viewport"), html.Content("width=device-width, initial-scale=1.0")),
 			html.Script(html.Src("static/main.js")),
 			html.Script(html.Src("static/highlight.js")),
 			html.Script(html.Src("static/htmx.js")),
@@ -45,7 +46,7 @@ func prevSlide(i, total int) int {
 	return ((i-1)%total + total) % total
 }
 
-func contentDiv(slideIdx, totalSlides int, command *slide, isCmdRunning bool) gomponents.Node {
+func contentDiv(slideIdx, totalSlides int, command slide, isCmdRunning bool) gomponents.Node {
 	return html.Div(
 		html.ID("command"),
 		html.Div(

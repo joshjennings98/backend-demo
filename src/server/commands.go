@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
@@ -36,10 +36,16 @@ var (
 )
 
 type commandManager struct {
-	currentCommand string
-	cancelCommand  context.CancelFunc
-	running        atomic.Bool
-	ws             *websocket.Conn
+	cancelCommand context.CancelFunc
+	running       atomic.Bool
+	ws            *websocket.Conn
+	logger        *slog.Logger
+}
+
+func newCommandManager(logger *slog.Logger) *commandManager {
+	return &commandManager{
+		logger: logger,
+	}
 }
 
 func setCommandToVar(cmd string) error {
@@ -90,6 +96,9 @@ func (c *commandManager) stopCurrentCommand() (err error) {
 }
 
 func (c *commandManager) termClear() (err error) {
+	if c.ws == nil {
+		return errors.New("websocket connection not yet ready")
+	}
 	if err := c.ws.WriteMessage(websocket.TextMessage, []byte("\033[2J\033[H")); err != nil {
 		return fmt.Errorf("Error sending clear to websocket: %v", err.Error())
 	}
@@ -97,6 +106,9 @@ func (c *commandManager) termClear() (err error) {
 }
 
 func (c *commandManager) termMessage(message []byte) error {
+	if c.ws == nil {
+		return errors.New("websocket connection not yet ready")
+	}
 	messageStr := strings.ReplaceAll(strings.TrimPrefix(string(message), "sh: line 1: "), "\n", "\n\r")
 	if err := c.ws.WriteMessage(websocket.TextMessage, []byte(messageStr)); err != nil {
 		return fmt.Errorf("Error sending clear to websocket: %v", err.Error())
@@ -109,19 +121,18 @@ func (c *commandManager) executeCommand(ctx context.Context, command string) (er
 
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
-		log.Printf("error creating stdout pipe for command %v: %v\n", cmd.String(), err.Error())
 		return
 	}
 
 	stderrPipe, err := cmd.StderrPipe()
 	if err != nil {
-		log.Printf("error creating stderr pipe for command %v: %v\n", cmd.String(), err.Error())
 		return
 	}
 
 	if err := cmd.Start(); err != nil {
 		return err
 	}
+
 	c.running.Store(true)
 	defer func() {
 		c.running.Store(false)
@@ -138,7 +149,7 @@ func (c *commandManager) executeCommand(ctx context.Context, command string) (er
 			n, err := reader.Read(buffer)
 			if err != nil {
 				if err != io.EOF && !errors.Is(err, fs.ErrClosed) {
-					return fmt.Errorf("error reading from pipe: %v\n", err.Error())
+					return fmt.Errorf("error reading from pipe: %v", err.Error())
 				}
 				return nil // command complete
 			}
@@ -152,26 +163,25 @@ func (c *commandManager) executeCommand(ctx context.Context, command string) (er
 
 func (c *commandManager) startCommand(command string) (err error) {
 	if err = c.stopCurrentCommand(); err != nil {
-		log.Printf("error stopping command %v: %v\n", c.currentCommand, err.Error())
 		return
 	}
 
 	if c.ws == nil {
-		log.Println("websocket connection not yet ready")
 		return
 	}
 
 	if err := c.termClear(); err != nil {
-		log.Println("error sending clear to websocket:", err.Error())
+		c.logger.Warn("error sending clear to websocket:", "error", err.Error())
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	c.cancelCommand = cancel
 
 	go func(ctx context.Context, command string) {
-		log.Println("starting command:", command)
+		c.logger.Info("starting command", "command", command)
 		if err := c.executeCommand(ctx, command); err != nil {
-			log.Printf("error executing command %v: %v\n", command, err.Error())
+			c.logger.Error("error executing command", "command", command, "error", err.Error())
+			return
 		}
 	}(ctx, command)
 

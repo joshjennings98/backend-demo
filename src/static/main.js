@@ -2,6 +2,7 @@ window.addEventListener('load', function () {
     var term = new Terminal({
         fontSize: 24,
         fontFamily: "monospace",
+        scrollback: 10000,
     });
     term.open(document.getElementById('terminal'));
 

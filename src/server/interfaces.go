@@ -5,19 +5,24 @@ import (
 	"net/http"
 )
 
-type IServer interface {
-	initialise(ctx context.Context) error
-	parsePreCommands(contents []string) (i int, err error)
-	getPreCommands() []string
-	parseSlides(contents []string, startIdx int) (err error)
-	addSlide(content string, t slideType)
-	getSlide(idx int) *slide
-	totalSlides() int
-	indexHandler(w http.ResponseWriter, r *http.Request)
-	initHandler(w http.ResponseWriter, r *http.Request)
-	showSlideHandler(w http.ResponseWriter, r *http.Request)
-	showSlideHandlerQueryRedirect(w http.ResponseWriter, r *http.Request)
-	startCommandHandler(w http.ResponseWriter, r *http.Request)
-	statusCommandHandler(w http.ResponseWriter, r *http.Request)
-	stopCommandHandler(w http.ResponseWriter, r *http.Request)
+type IPresentation interface {
+	Initialise(ctx context.Context) error
+	ParsePreCommands(contents []string) (i int, err error)
+	GetPreCommands() []string
+	ParseSlides(contents []string, startIdx int) (err error)
+	ParseSlide(content string, t slideType)
+	GetSlide(idx int) slide
+	GetSlideCount() int
+}
+
+type IPresentationServer interface {
+	IPresentation
+	Start(ctx context.Context) error
+	HandlerIndex(w http.ResponseWriter, r *http.Request)
+	HandlerInit(w http.ResponseWriter, r *http.Request)
+	HandlerSlideByIndex(w http.ResponseWriter, r *http.Request)
+	HandlerSlideByQuery(w http.ResponseWriter, r *http.Request)
+	HandlerCommandStart(w http.ResponseWriter, r *http.Request)
+	HandlerCommandStatus(w http.ResponseWriter, r *http.Request)
+	HandlerCommandStop(w http.ResponseWriter, r *http.Request)
 }

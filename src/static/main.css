@@ -1,13 +1,15 @@
 body {
-    overflow: hidden;
-    width: 100%; 
+    overflow-x: hidden;
+    overflow-y: scroll;
 }
 
 #controls {
     display: flex;
+    padding-left: 10px;
 }
 
 select, button {
+    margin-top: 10px;
     height: 25px;
 }
 
@@ -17,7 +19,9 @@ select, button {
 
 #terminal {
     padding-right: 15px;
-    padding-bottom: 10px;
+    max-height: 65vh;
+    overflow-x: hidden;
+    overflow-y: scroll;
 }
 
 img {
