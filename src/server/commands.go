@@ -167,7 +167,7 @@ func (c *commandManager) startCommand(command string) (err error) {
 	}
 
 	if c.ws == nil {
-		return
+		return errors.New("websocket connection not yet ready")
 	}
 
 	if err := c.termClear(); err != nil {
