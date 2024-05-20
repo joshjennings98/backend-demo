@@ -9,16 +9,16 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"sync"
 )
 
 const (
 	indexEndpoint         = "GET /presentation"
 	initEndpoint          = "GET /init"
 	pageEndpoint          = "GET /slides/{id}/"
-	startCommandEndpoint  = "POST /commands/{id}/"
-	statusCommandEndpoint = "GET /commands/{id}/"
-	stopCommandEndpoint   = "DELETE /commands/{id}/"
+	pageEndpointQuery     = "GET /slides/"
+	startCommandEndpoint  = "POST /commands/{id}/start"
+	statusCommandEndpoint = "GET /commands/{id}/status"
+	stopCommandEndpoint   = "POST /commands/{id}/stop"
 )
 
 var (
@@ -133,9 +133,7 @@ func NewServer(presentationPath string) (s IServer, err error) {
 	}
 
 	s = &server{
-		commandManager: &commandManager{
-			mu: sync.Mutex{},
-		},
+		commandManager: &commandManager{},
 	}
 
 	slideContent := strings.Split(regexp.MustCompile(`\\\s*\n`).ReplaceAllString(string(contents), ""), "\n")
@@ -171,6 +169,7 @@ func Start(ctx context.Context, presentationPath string) error {
 	r.HandleFunc(indexEndpoint, m.indexHandler)
 	r.HandleFunc(initEndpoint, m.initHandler)
 	r.HandleFunc(pageEndpoint, m.showSlideHandler)
+	r.HandleFunc(pageEndpointQuery, m.showSlideHandlerQueryRedirect)
 	r.HandleFunc(startCommandEndpoint, m.startCommandHandler)
 	r.HandleFunc(statusCommandEndpoint, m.statusCommandHandler)
 	r.HandleFunc(stopCommandEndpoint, m.stopCommandHandler)

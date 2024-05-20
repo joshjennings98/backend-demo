@@ -37,18 +37,12 @@ func indexHTML(content gomponents.Node) gomponents.Node {
 	)
 }
 
-func nextSlide(i, total int) (j int) {
-	j = (i + 1) % total
-	return
+func nextSlide(i, total int) int {
+	return (i + 1) % total
 }
 
-func prevSlide(i, total int) (j int) {
-	j = (((i-1)%total + total) % total)
-	if j > 0 {
-		return
-	}
-	j *= -1
-	return
+func prevSlide(i, total int) int {
+	return ((i-1)%total + total) % total
 }
 
 func contentDiv(slideIdx, totalSlides int, command *slide, isCmdRunning bool) gomponents.Node {
@@ -114,10 +108,9 @@ func slideSelect(slideIdx, totalSlides int) gomponents.Node {
 	}
 
 	return html.Select(
-		hx.Get(fmt.Sprintf("/slides/%v", slideIdx)),
-		hx.Trigger("change"),
+		hx.Get("/slides"),
 		hx.Target("#command"),
-		html.Name("slideIndex"),
+		html.Name("idx"),
 		gomponents.Group(options),
 	)
 }
@@ -125,7 +118,7 @@ func slideSelect(slideIdx, totalSlides int) gomponents.Node {
 func runningButton(idx int, isCmdRunning bool) gomponents.Node {
 	if isCmdRunning {
 		return html.Div(
-			hx.Get(fmt.Sprintf("/commands/%v/", idx)),
+			hx.Get(fmt.Sprintf("/commands/%v/status", idx)),
 			hx.Trigger("every 100ms"),
 			hx.Target("#execute-button"),
 			stopButton(idx),
@@ -141,12 +134,12 @@ func stopButton(idx int) gomponents.Node {
 	return html.Div(
 		html.ID("stop-button"),
 		html.FormEl(
-			hx.Delete(fmt.Sprintf("/commands/%v/", idx)),
+			hx.Post(fmt.Sprintf("/commands/%v/stop", idx)),
 			hx.Target("#stop-button"),
 			html.Button(gomponents.Text("stop")),
 		),
 		html.FormEl(
-			hx.Delete(fmt.Sprintf("/commands/%v/", idx)),
+			hx.Post(fmt.Sprintf("/commands/%v/stop", idx)),
 			hx.Target("#stop-button"),
 			hx.Trigger("keyup[key==' '] from:body"),
 			gomponents.Attr("hidden", "true"),
@@ -158,12 +151,12 @@ func executeButton(idx int) gomponents.Node {
 	return html.Div(
 		html.ID("execute-button"),
 		html.FormEl(
-			hx.Post(fmt.Sprintf("/commands/%v/", idx)),
+			hx.Post(fmt.Sprintf("/commands/%v/start", idx)),
 			hx.Target("#execute-button"),
 			html.Button(gomponents.Text("execute")),
 		),
 		html.FormEl(
-			hx.Post(fmt.Sprintf("/commands/%v/", idx)),
+			hx.Post(fmt.Sprintf("/commands/%v/start", idx)),
 			hx.Target("#execute-button"),
 			hx.Trigger("keyup[key==' '] from:body"),
 			gomponents.Attr("hidden", "true"),

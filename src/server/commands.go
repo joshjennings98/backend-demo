@@ -13,7 +13,6 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
-	"sync"
 	"sync/atomic"
 
 	"github.com/gorilla/websocket"
@@ -37,7 +36,6 @@ var (
 )
 
 type commandManager struct {
-	mu             sync.Mutex
 	currentCommand string
 	cancelCommand  context.CancelFunc
 	running        atomic.Bool
@@ -99,7 +97,7 @@ func (c *commandManager) termClear() (err error) {
 }
 
 func (c *commandManager) termMessage(message []byte) error {
-	messageStr := strings.ReplaceAll(string(message), "\n", "\n\r")
+	messageStr := strings.ReplaceAll(strings.TrimPrefix(string(message), "sh: line 1: "), "\n", "\n\r")
 	if err := c.ws.WriteMessage(websocket.TextMessage, []byte(messageStr)); err != nil {
 		return fmt.Errorf("Error sending clear to websocket: %v", err.Error())
 	}
@@ -108,11 +106,16 @@ func (c *commandManager) termMessage(message []byte) error {
 
 func (c *commandManager) executeCommand(ctx context.Context, command string) (err error) {
 	cmd := exec.CommandContext(ctx, "sh", "-c", command)
-	cmd.Stderr = cmd.Stdout
 
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Printf("error creating stdout pipe for command %v: %v\n", cmd.String(), err.Error())
+		return
+	}
+
+	stderrPipe, err := cmd.StderrPipe()
+	if err != nil {
+		log.Printf("error creating stderr pipe for command %v: %v\n", cmd.String(), err.Error())
 		return
 	}
 
@@ -124,7 +127,7 @@ func (c *commandManager) executeCommand(ctx context.Context, command string) (er
 		c.running.Store(false)
 	}()
 
-	reader := bufio.NewReader(stdoutPipe)
+	reader := bufio.NewReader(io.MultiReader(stdoutPipe, stderrPipe))
 	buffer := make([]byte, terminalBufferSize)
 
 	for {
@@ -135,7 +138,7 @@ func (c *commandManager) executeCommand(ctx context.Context, command string) (er
 			n, err := reader.Read(buffer)
 			if err != nil {
 				if err != io.EOF && !errors.Is(err, fs.ErrClosed) {
-					return fmt.Errorf("error reading from StdoutPipe: %v\n", err.Error())
+					return fmt.Errorf("error reading from pipe: %v\n", err.Error())
 				}
 				return nil // command complete
 			}

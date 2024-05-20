@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -8,6 +9,14 @@ import (
 
 func (s *server) indexHandler(w http.ResponseWriter, r *http.Request) {
 	_ = indexHTML(contentDiv(0, s.totalSlides(), s.getSlide(0), false)).Render(w)
+}
+
+// this allows for using the select dropdown to change pages with no extra javascript https://htmx.org/examples/value-select/
+func (s *server) showSlideHandlerQueryRedirect(w http.ResponseWriter, r *http.Request) {
+	if slideIdx := r.URL.Query().Get("idx"); slideIdx != "" {
+		http.Redirect(w, r, fmt.Sprintf("/slides/%v", slideIdx), http.StatusMovedPermanently)
+	}
+	w.WriteHeader(http.StatusBadRequest)
 }
 
 func (s *server) showSlideHandler(w http.ResponseWriter, r *http.Request) {
@@ -18,6 +27,8 @@ func (s *server) showSlideHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = s.commandManager.termClear()
+
+	_ = s.commandManager.stopCurrentCommand()
 
 	_ = contentDiv(id, s.totalSlides(), s.getSlide(id), false).Render(w)
 }
@@ -62,7 +73,7 @@ func (s *server) statusCommandHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if running := s.commandManager.running.Load(); !running {
+	if !s.commandManager.running.Load() {
 		_ = runningButton(id, false).Render(w)
 	} else {
 		w.WriteHeader(http.StatusNoContent)

@@ -47,6 +47,4 @@ Alternatively use the arrow keys for forward and back and the space bar to execu
 ## Todo
 
 * Formatting of plain slides (links, images, etc.) and code block slides
-* Make sure errors from commands are shown
-* Get select to GET the selected slide
 * Add tests and verify behavior

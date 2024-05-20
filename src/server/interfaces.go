@@ -16,6 +16,7 @@ type IServer interface {
 	indexHandler(w http.ResponseWriter, r *http.Request)
 	initHandler(w http.ResponseWriter, r *http.Request)
 	showSlideHandler(w http.ResponseWriter, r *http.Request)
+	showSlideHandlerQueryRedirect(w http.ResponseWriter, r *http.Request)
 	startCommandHandler(w http.ResponseWriter, r *http.Request)
 	statusCommandHandler(w http.ResponseWriter, r *http.Request)
 	stopCommandHandler(w http.ResponseWriter, r *http.Request)
