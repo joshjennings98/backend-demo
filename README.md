@@ -76,3 +76,4 @@ Alternatively use the arrow keys for forward and back and the space bar to execu
 * Add nix flake
 * Add code coverage badge?
 * Change module name
+* Fix comments in (after) precommands
