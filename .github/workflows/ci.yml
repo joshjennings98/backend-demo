@@ -12,14 +12,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-python@v2
-      with:
-        python-version: '3.10'
-    - name: Install dependencies
-      run: |
-        pip install pipenv
-        pipenv install --dev
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v5
     - name: Run tests
       run: |
-        pipenv run python -m unittest tests/*
+        cd server
+        go mod tidy
+        go test ./... -cover -v
