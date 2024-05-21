@@ -15,7 +15,7 @@ This application lends itself to a presentation method similar to the [Takahashi
 The result is that with this application backend demos should be much easier to create and run whilst also being slightly more engaging.
 Features
 
-* A presentation is uses just a simple text file.
+* A presentation is just a simple text file.
 * A slide can contain one of: text, an executed command, a code block, or an image. The syntax is very similar to markdown.
 * Executed commands will stream output to be shown in the slide thanks to [xterm.js](http://xtermjs.org/).
 * The command that is executed is shown above the command output.
@@ -74,3 +74,5 @@ Alternatively use the arrow keys for forward and back and the space bar to execu
 ## Todo
 
 * Add nix flake
+* Add code coverage badge?
+* Change module name
