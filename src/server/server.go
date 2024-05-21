@@ -2,12 +2,15 @@ package server
 
 import (
 	"context"
+	"embed"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -35,7 +38,7 @@ var (
 			},
 		},
 		{
-			regexp.MustCompile(`^(.*)\[([^\]]+)\]\(([^)]+)\)(.*)$`),
+			regexp.MustCompile(`^([^!]*)\[([^\]]*)\]\(([^)]+)\)(.*)$`),
 			func(matches []string) string {
 				return fmt.Sprintf(`%v<a href="%v" target="_blank" rel="noopener noreferrer">%v</a>%v`, matches[1], matches[3], matches[2], matches[4])
 			},
@@ -63,6 +66,7 @@ func parsePlainSlide(content string) (output string) {
 }
 
 type server struct {
+	commandsFile   string
 	preCommands    []string
 	slides         []slide
 	commandManager *commandManager
@@ -82,10 +86,18 @@ func (s *server) GetSlideCount() int {
 }
 
 func (s *server) ParsePreCommands(contents []string) (i int, err error) {
-	for !hrRegex.MatchString(contents[i]) {
+	for i < len(contents) && !hrRegex.MatchString(contents[i]) {
 		s.preCommands = append(s.preCommands, contents[i])
 		i++
 	}
+
+	if i == len(contents) { // no preCommands
+		s.preCommands = []string{}
+		i = 0
+		return
+	}
+
+	i++ // skip the separator
 	return
 }
 
@@ -131,7 +143,7 @@ func (s *server) ParseSlides(contents []string, startIdx int) (err error) {
 	insideCodeBlock := false
 	var currentCommand strings.Builder
 
-	contents = contents[startIdx+1:]
+	contents = contents[startIdx:]
 
 	for i := range contents {
 		line := contents[i]
@@ -170,18 +182,28 @@ func (s *server) ParseSlides(contents []string, startIdx int) (err error) {
 	return
 }
 
-func NewServer(logger *slog.Logger, commandsFile string) (s IPresentationServer, err error) {
+func (s *server) SplitContent(commandsFile string) (slideContent []string, err error) {
 	contents, err := os.ReadFile(commandsFile)
 	if err != nil {
 		return
 	}
 
+	slideContent = strings.Split(regexp.MustCompile(`\\\s*\n`).ReplaceAllString(string(contents), ""), "\n")
+	slideContent = slices.DeleteFunc(slideContent, func(s string) bool { return s == "" })
+	return
+}
+
+func NewServer(logger *slog.Logger, commandsFile string) (s IPresentationServer, err error) {
 	s = &server{
 		logger:         logger,
+		commandsFile:   commandsFile,
 		commandManager: newCommandManager(logger),
 	}
 
-	slideContent := strings.Split(regexp.MustCompile(`\\\s*\n`).ReplaceAllString(string(contents), ""), "\n")
+	slideContent, err := s.SplitContent(commandsFile)
+	if err != nil {
+		return
+	}
 
 	startIdx, err := s.ParsePreCommands(slideContent)
 	if err != nil {
@@ -197,6 +219,9 @@ func NewServer(logger *slog.Logger, commandsFile string) (s IPresentationServer,
 
 	return
 }
+
+//go:embed static
+var staticFS embed.FS
 
 func (s *server) Start(ctx context.Context) (err error) {
 	err = s.Initialise(ctx)
@@ -215,7 +240,8 @@ func (s *server) Start(ctx context.Context) (err error) {
 	mux.HandleFunc(EndpointCommandStatus, s.HandlerCommandStatus)
 	mux.HandleFunc(EndpointCommandStop, s.HandlerCommandStop)
 
-	mux.HandleFunc("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))).ServeHTTP)
+	mux.HandleFunc("/static/", http.FileServerFS(staticFS).ServeHTTP)
+	mux.HandleFunc("/", http.FileServer(http.Dir(filepath.Dir(s.commandsFile))).ServeHTTP)
 
 	s.logger.Info("server is running", "host", "http://localhost:8080/presentation")
 

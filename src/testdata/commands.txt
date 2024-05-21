@@ -1,5 +1,5 @@
 TEST=$(echo 345)
-
+TEST2=123
 ---
 
 this is \ 
