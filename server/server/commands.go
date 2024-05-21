@@ -48,11 +48,11 @@ func newCommandManager(logger *slog.Logger) ICommandManager {
 	}
 }
 
-func setCommandToVar(cmd string) error {
+func setCommandToVar(ctx context.Context, cmd string) error {
 	if matches := varCommandPattern.FindStringSubmatch(cmd); len(matches) == 4 {
 		variable, command := matches[1], matches[3]
 
-		out, err := exec.Command("sh", "-c", command).Output()
+		out, err := exec.CommandContext(ctx, "sh", "-c", command).Output()
 		if err != nil {
 			return fmt.Errorf("error executing command '%v': %v", command, err.Error())
 		}
@@ -77,8 +77,8 @@ func setVar(cmd string) error {
 	return nil
 }
 
-func runCommand(cmd string) error {
-	err := exec.Command("sh", "-c", cmd).Run()
+func runCommand(ctx context.Context, cmd string) error {
+	err := exec.CommandContext(ctx, "sh", "-c", cmd).Run()
 	if err != nil {
 		return fmt.Errorf("error executing command '%v': %v", cmd, err.Error())
 	}

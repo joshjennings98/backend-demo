@@ -113,27 +113,32 @@ func (s *server) ParseSlide(content string, t types.SlideType) {
 
 func (s *server) Initialise(ctx context.Context) (err error) {
 	for _, cmd := range s.GetPreCommands() {
-		if strings.HasPrefix("#", cmd) {
-			continue
-		}
-
-		s.logger.Info("running pre-command", "command", cmd)
-
-		switch {
-		case varCommandPattern.MatchString(cmd):
-			if err := setCommandToVar(cmd); err != nil {
-				err = fmt.Errorf("could not set command to var '%v': %v", cmd, err.Error())
-				return err
-			}
-		case varPattern.MatchString(cmd):
-			if err := setVar(cmd); err != nil {
-				err = fmt.Errorf("could set variable '%v': %v", cmd, err.Error())
-				return err
-			}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
 		default:
-			if err := runCommand(cmd); err != nil {
-				err = fmt.Errorf("could not execute pre-command '%v': %v", cmd, err.Error())
-				return err
+			if strings.HasPrefix("#", cmd) {
+				continue
+			}
+
+			s.logger.Info("running pre-command", "command", cmd)
+
+			switch {
+			case varCommandPattern.MatchString(cmd):
+				if err := setCommandToVar(ctx, cmd); err != nil {
+					err = fmt.Errorf("could not set command to var '%v': %v", cmd, err.Error())
+					return err
+				}
+			case varPattern.MatchString(cmd):
+				if err := setVar(cmd); err != nil {
+					err = fmt.Errorf("could set variable '%v': %v", cmd, err.Error())
+					return err
+				}
+			default:
+				if err := runCommand(ctx, cmd); err != nil {
+					err = fmt.Errorf("could not execute pre-command '%v': %v", cmd, err.Error())
+					return err
+				}
 			}
 		}
 	}

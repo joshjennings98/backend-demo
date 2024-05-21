@@ -9,8 +9,6 @@ import (
 	"github.com/joshjennings98/backend-demo/server/types"
 )
 
-//go:generate mockgen -destination=../mocks/mock_$GOPACKAGE.go -package=mocks github.com/joshjennings98/backend-demo/server/$GOPACKAGE IPresentation,IPresentationServer,ICommandManager
-
 type IPresentation interface {
 	Initialise(ctx context.Context) error
 	SplitContent(commandsFile string) (slideContent []string, err error)
@@ -33,6 +31,8 @@ type IPresentationServer interface {
 	HandlerCommandStatus(w http.ResponseWriter, r *http.Request)
 	HandlerCommandStop(w http.ResponseWriter, r *http.Request)
 }
+
+//go:generate mockgen -destination=../mocks/mock_$GOPACKAGE.go -package=mocks github.com/joshjennings98/backend-demo/server/$GOPACKAGE ICommandManager
 
 type ICommandManager interface {
 	IsRunning() bool

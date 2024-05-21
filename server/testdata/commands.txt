@@ -1,5 +1,7 @@
 TEST=$(echo 345)
 TEST2=123
+# comment won't get run
+echo test
 ---
 
 this is \ 

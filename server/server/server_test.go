@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -23,6 +24,8 @@ func TestNewServer(t *testing.T) {
 		assert.Equal(t, []string{
 			"TEST=$(echo 345)",
 			"TEST2=123",
+			"# comment won't get run",
+			"echo test",
 			"---",
 			"this is a [presentation](http://google.com)",
 			"$ echo aaa && sleep 2 && echo bbb",
@@ -41,7 +44,7 @@ func TestNewServer(t *testing.T) {
 			"$ ls -R /",
 		}, slideContent)
 
-		assert.Equal(t, []string{"TEST=$(echo 345)", "TEST2=123"}, s.GetPreCommands())
+		assert.Equal(t, []string{"TEST=$(echo 345)", "TEST2=123", "# comment won't get run", "echo test"}, s.GetPreCommands())
 
 		assert.Equal(t, types.Slide{ID: 0, Content: "this is a <a href=\"http://google.com\" target=\"_blank\" rel=\"noopener noreferrer\">presentation</a>", SlideType: types.SlideTypePlain}, s.GetSlide(0))
 		assert.Equal(t, types.Slide{ID: 1, Content: "echo aaa && sleep 2 && echo bbb", SlideType: types.SlideTypeCommand}, s.GetSlide(1))
@@ -85,6 +88,51 @@ func TestNewServer(t *testing.T) {
 		assert.Equal(t, types.Slide{ID: 4, Content: "<img src=\"https://upload.wikimedia.org/wikipedia/en/7/73/Hyperion_cover.jpg\" alt=\"hyperion\">", SlideType: types.SlideTypePlain}, s.GetSlide(4))
 
 		assert.Equal(t, 12, s.GetSlideCount())
+	})
+}
+
+func TestInitialise(t *testing.T) {
+	t.Run("Normal", func(t *testing.T) {
+		commands := filepath.Join("..", "testdata", "commands.txt")
+
+		s, err := NewServer(slog.New(slog.NewTextHandler(os.Stdout, nil)), commands)
+		require.NoError(t, err)
+
+		err = s.Initialise(context.Background())
+		assert.NoError(t, err)
+	})
+
+	t.Run("Bad pre command", func(t *testing.T) {
+		commands := filepath.Join("..", "testdata", "bad-pre-commands.txt")
+
+		s, err := NewServer(slog.New(slog.NewTextHandler(os.Stdout, nil)), commands)
+		require.NoError(t, err)
+
+		err = s.Initialise(context.Background())
+		assert.ErrorContains(t, err, "error executing command")
+	})
+
+	t.Run("Bad pre command", func(t *testing.T) {
+		commands := filepath.Join("..", "testdata", "bad-pre-commands1.txt")
+
+		s, err := NewServer(slog.New(slog.NewTextHandler(os.Stdout, nil)), commands)
+		require.NoError(t, err)
+
+		err = s.Initialise(context.Background())
+		assert.ErrorContains(t, err, "error executing command")
+	})
+
+	t.Run("Cancel context", func(t *testing.T) {
+		commands := filepath.Join("..", "testdata", "commands.txt")
+
+		s, err := NewServer(slog.New(slog.NewTextHandler(os.Stdout, nil)), commands)
+		require.NoError(t, err)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		err = s.Initialise(ctx)
+		assert.ErrorContains(t, err, "canceled")
 	})
 }
 

@@ -16,11 +16,22 @@ import (
 )
 
 func TestSetCommandToVar(t *testing.T) {
-	err := setCommandToVar("MYVAR=$(echo hello)")
-	assert.NoError(t, err)
-	value, exists := os.LookupEnv("MYVAR")
-	assert.True(t, exists)
-	assert.Equal(t, "hello", value)
+	t.Run("good", func(t *testing.T) {
+		err := setCommandToVar(context.Background(), "MYVAR=$(echo hello)")
+		assert.NoError(t, err)
+		value, exists := os.LookupEnv("MYVAR")
+		assert.True(t, exists)
+		assert.Equal(t, "hello", value)
+	})
+
+	t.Run("context cancel", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		err := setCommandToVar(ctx, "MYVAR2=$(sleep 5; echo hello)")
+		assert.ErrorContains(t, err, "canceled")
+		_, exists := os.LookupEnv("MYVAR2")
+		assert.False(t, exists)
+	})
 }
 
 func TestSetVar(t *testing.T) {
@@ -33,12 +44,20 @@ func TestSetVar(t *testing.T) {
 
 func TestRunCommand(t *testing.T) {
 	t.Run("good", func(t *testing.T) {
-		err := runCommand("echo hello")
+		err := runCommand(context.Background(), "echo hello")
 		assert.NoError(t, err)
 	})
-	t.Run("good", func(t *testing.T) {
-		err := runCommand("adsadsa")
+
+	t.Run("bad", func(t *testing.T) {
+		err := runCommand(context.Background(), "adsadsa")
 		assert.ErrorContains(t, err, "error executing command")
+	})
+
+	t.Run("context cancel", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		err := runCommand(ctx, "sleep 5")
+		assert.ErrorContains(t, err, "canceled")
 	})
 }
 
