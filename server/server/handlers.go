@@ -33,14 +33,14 @@ func (s *server) HandlerSlideByIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.commandManager.termClear()
+	err = s.commandManager.TermClear()
 	if err != nil {
 		s.logger.Warn("could not clear terminal in slide handler", "error", err.Error())
 	}
 
-	err = s.commandManager.stopCurrentCommand()
+	err = s.commandManager.StopCurrentCommand()
 	if err != nil {
-		s.logger.Warn("could not stop current command in slide handler", "command", s.GetSlide(id).content, "error", err.Error())
+		s.logger.Warn("could not stop current command in slide handler", "command", s.GetSlide(id).Content, "error", err.Error())
 	}
 
 	err = contentDiv(id, s.GetSlideCount(), s.GetSlide(id), false).Render(w)
@@ -54,20 +54,22 @@ func (s *server) HandlerSlideByIndex(w http.ResponseWriter, r *http.Request) {
 func (s *server) HandlerInit(w http.ResponseWriter, r *http.Request) {
 	s.logger.Info("attempting to upgrade HTTP to websocket")
 
-	if s.commandManager.ws != nil {
+	fmt.Println(r.URL)
+
+	if s.commandManager.GetWebsocketConnection() != nil {
 		s.logger.Info("closing existing websocket")
-		if err := s.commandManager.ws.Close(); err != nil {
+		if err := s.commandManager.GetWebsocketConnection().Close(); err != nil {
 			s.logger.Warn("error closing existing websocket", "error", err.Error())
 		}
 	}
 
-	var err error
-	s.commandManager.ws, err = upgrader.Upgrade(w, r, nil)
+	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		s.logger.Error("couldn't upgrade to websocket", "error", err.Error())
 		return
 	}
+	s.commandManager.SetWebsocketConnection(ws)
 
 	s.logger.Info("upgraded HTTP connection to websocket")
 }
@@ -85,9 +87,9 @@ func (s *server) HandlerCommandStart(w http.ResponseWriter, r *http.Request) {
 		s.logger.Warn("could not render running button in command start handler", "running", true, "error", err.Error())
 	}
 
-	err = s.commandManager.startCommand(s.GetSlide(id).content)
+	err = s.commandManager.StartCommand(s.GetSlide(id).Content)
 	if err != nil {
-		s.logger.Error("could not start command in command start handler", "command", s.GetSlide(id).content, "error", err.Error())
+		s.logger.Error("could not start command in command start handler", "command", s.GetSlide(id).Content, "error", err.Error())
 	}
 }
 
@@ -99,7 +101,7 @@ func (s *server) HandlerCommandStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !s.commandManager.running.Load() {
+	if !s.commandManager.IsRunning() {
 		err = runningButton(id, false).Render(w)
 		if err != nil {
 			s.logger.Warn("could not render running button in command status handler", "running", false, "error", err.Error())
@@ -117,9 +119,9 @@ func (s *server) HandlerCommandStop(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.commandManager.stopCurrentCommand()
+	err = s.commandManager.StopCurrentCommand()
 	if err != nil {
-		s.logger.Warn("could not stop current command in stop command handler", "command", s.GetSlide(id).content, "error", err.Error())
+		s.logger.Warn("could not stop current command in stop command handler", "command", s.GetSlide(id).Content, "error", err.Error())
 	}
 
 	err = runningButton(id, false).Render(w)

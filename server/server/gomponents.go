@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 
+	"github.com/joshjennings98/backend-demo/server/types"
 	"github.com/maragudk/gomponents"
 	hx "github.com/maragudk/gomponents-htmx"
 	"github.com/maragudk/gomponents/html"
@@ -46,7 +47,7 @@ func prevSlide(i, total int) int {
 	return ((i-1)%total + total) % total
 }
 
-func contentDiv(slideIdx, totalSlides int, command slide, isCmdRunning bool) gomponents.Node {
+func contentDiv(slideIdx, totalSlides int, command types.Slide, isCmdRunning bool) gomponents.Node {
 	return html.Div(
 		html.ID("command"),
 		html.Div(
@@ -72,23 +73,23 @@ func contentDiv(slideIdx, totalSlides int, command slide, isCmdRunning bool) gom
 		html.Div(
 			html.Div(
 				gomponentsIfElse(
-					command.slideType == slideTypeCommand,
+					command.SlideType == types.SlideTypeCommand,
 					html.Class("command-string"),
 					html.Class("text-string"),
 				),
-				cleanedCommandGomponent(command.content),
+				cleanedCommandGomponent(command.Content),
 			),
 		),
 		html.Div(
 			gomponents.If(
-				command.slideType != slideTypeCommand,
+				command.SlideType != types.SlideTypeCommand,
 				gomponents.Attr("hidden", "true"),
 			),
 			html.Div(
 				html.ID("terminal"),
 				hx.Preserve("true"),
 			),
-			runningButton(command.id, isCmdRunning),
+			runningButton(command.ID, isCmdRunning),
 		),
 	)
 }

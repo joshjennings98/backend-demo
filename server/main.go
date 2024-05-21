@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/joshjennings98/backend-demo/src/server"
+	"github.com/joshjennings98/backend-demo/server/server"
 )
 
 func main() {

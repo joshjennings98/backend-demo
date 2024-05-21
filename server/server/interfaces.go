@@ -3,7 +3,13 @@ package server
 import (
 	"context"
 	"net/http"
+
+	"github.com/gorilla/websocket"
+
+	"github.com/joshjennings98/backend-demo/server/types"
 )
+
+//go:generate mockgen -destination=../mocks/mock_$GOPACKAGE.go -package=mocks github.com/joshjennings98/backend-demo/server/$GOPACKAGE IPresentation,IPresentationServer,ICommandManager
 
 type IPresentation interface {
 	Initialise(ctx context.Context) error
@@ -11,8 +17,8 @@ type IPresentation interface {
 	ParsePreCommands(contents []string) (i int, err error)
 	GetPreCommands() []string
 	ParseSlides(contents []string, startIdx int) (err error)
-	ParseSlide(content string, t slideType)
-	GetSlide(idx int) slide
+	ParseSlide(content string, t types.SlideType)
+	GetSlide(idx int) types.Slide
 	GetSlideCount() int
 }
 
@@ -26,4 +32,17 @@ type IPresentationServer interface {
 	HandlerCommandStart(w http.ResponseWriter, r *http.Request)
 	HandlerCommandStatus(w http.ResponseWriter, r *http.Request)
 	HandlerCommandStop(w http.ResponseWriter, r *http.Request)
+}
+
+type ICommandManager interface {
+	IsRunning() bool
+	SetRunning(b bool)
+	SetCancelCommand(cancel context.CancelFunc)
+	GetWebsocketConnection() *websocket.Conn
+	SetWebsocketConnection(ws *websocket.Conn)
+	StopCurrentCommand() error
+	TermClear() error
+	TermMessage(message []byte) error
+	ExecuteCommand(ctx context.Context, command string) error
+	StartCommand(command string) error
 }

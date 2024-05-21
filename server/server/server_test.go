@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/joshjennings98/backend-demo/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -42,10 +43,10 @@ func TestNewServer(t *testing.T) {
 
 		assert.Equal(t, []string{"TEST=$(echo 345)", "TEST2=123"}, s.GetPreCommands())
 
-		assert.Equal(t, slide{0, "this is a <a href=\"http://google.com\" target=\"_blank\" rel=\"noopener noreferrer\">presentation</a>", slideTypePlain}, s.GetSlide(0))
-		assert.Equal(t, slide{1, "echo aaa && sleep 2 && echo bbb", slideTypeCommand}, s.GetSlide(1))
-		assert.Equal(t, slide{3, "<pre class='language-python'><code>\ndef main():\n    print(\"hello world\")\n</code></pre>", slideTypeCodeblock}, s.GetSlide(3))
-		assert.Equal(t, slide{4, "<img src=\"https://upload.wikimedia.org/wikipedia/en/7/73/Hyperion_cover.jpg\" alt=\"hyperion\">", slideTypePlain}, s.GetSlide(4))
+		assert.Equal(t, types.Slide{ID: 0, Content: "this is a <a href=\"http://google.com\" target=\"_blank\" rel=\"noopener noreferrer\">presentation</a>", SlideType: types.SlideTypePlain}, s.GetSlide(0))
+		assert.Equal(t, types.Slide{ID: 1, Content: "echo aaa && sleep 2 && echo bbb", SlideType: types.SlideTypeCommand}, s.GetSlide(1))
+		assert.Equal(t, types.Slide{ID: 3, Content: "<pre class='language-python'><code>\ndef main():\n    print(\"hello world\")\n</code></pre>", SlideType: types.SlideTypeCodeblock}, s.GetSlide(3))
+		assert.Equal(t, types.Slide{ID: 4, Content: "<img src=\"https://upload.wikimedia.org/wikipedia/en/7/73/Hyperion_cover.jpg\" alt=\"hyperion\">", SlideType: types.SlideTypePlain}, s.GetSlide(4))
 
 		assert.Equal(t, 12, s.GetSlideCount())
 	})
@@ -78,10 +79,10 @@ func TestNewServer(t *testing.T) {
 
 		assert.Equal(t, []string{}, s.GetPreCommands())
 
-		assert.Equal(t, slide{0, "this is a <a href=\"http://google.com\" target=\"_blank\" rel=\"noopener noreferrer\">presentation</a>", slideTypePlain}, s.GetSlide(0))
-		assert.Equal(t, slide{1, "echo aaa && sleep 2 && echo bbb", slideTypeCommand}, s.GetSlide(1))
-		assert.Equal(t, slide{3, "<pre class='language-python'><code>\ndef main():\n    print(\"hello world\")\n</code></pre>", slideTypeCodeblock}, s.GetSlide(3))
-		assert.Equal(t, slide{4, "<img src=\"https://upload.wikimedia.org/wikipedia/en/7/73/Hyperion_cover.jpg\" alt=\"hyperion\">", slideTypePlain}, s.GetSlide(4))
+		assert.Equal(t, types.Slide{ID: 0, Content: "this is a <a href=\"http://google.com\" target=\"_blank\" rel=\"noopener noreferrer\">presentation</a>", SlideType: types.SlideTypePlain}, s.GetSlide(0))
+		assert.Equal(t, types.Slide{ID: 1, Content: "echo aaa && sleep 2 && echo bbb", SlideType: types.SlideTypeCommand}, s.GetSlide(1))
+		assert.Equal(t, types.Slide{ID: 3, Content: "<pre class='language-python'><code>\ndef main():\n    print(\"hello world\")\n</code></pre>", SlideType: types.SlideTypeCodeblock}, s.GetSlide(3))
+		assert.Equal(t, types.Slide{ID: 4, Content: "<img src=\"https://upload.wikimedia.org/wikipedia/en/7/73/Hyperion_cover.jpg\" alt=\"hyperion\">", SlideType: types.SlideTypePlain}, s.GetSlide(4))
 
 		assert.Equal(t, 12, s.GetSlideCount())
 	})

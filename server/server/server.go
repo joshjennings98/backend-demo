@@ -12,6 +12,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/joshjennings98/backend-demo/server/types"
 )
 
 const (
@@ -66,10 +68,10 @@ func parsePlainSlide(content string) (output string) {
 }
 
 type server struct {
-	commandsFile   string
 	preCommands    []string
-	slides         []slide
-	commandManager *commandManager
+	slides         []types.Slide
+	commandsFile   string
+	commandManager ICommandManager
 	logger         *slog.Logger
 }
 
@@ -77,7 +79,7 @@ func (s *server) GetPreCommands() []string {
 	return s.preCommands
 }
 
-func (s *server) GetSlide(idx int) slide {
+func (s *server) GetSlide(idx int) types.Slide {
 	return s.slides[idx]
 }
 
@@ -101,11 +103,11 @@ func (s *server) ParsePreCommands(contents []string) (i int, err error) {
 	return
 }
 
-func (s *server) ParseSlide(content string, t slideType) {
-	s.slides = append(s.slides, slide{
-		id:        len(s.slides),
-		content:   content,
-		slideType: t,
+func (s *server) ParseSlide(content string, t types.SlideType) {
+	s.slides = append(s.slides, types.Slide{
+		ID:        len(s.slides),
+		Content:   content,
+		SlideType: t,
 	})
 }
 
@@ -152,7 +154,7 @@ func (s *server) ParseSlides(contents []string, startIdx int) (err error) {
 		if strings.HasPrefix(trimmed, "```") {
 			if insideCodeBlock {
 				currentCommand.WriteString("\n</code></pre>")
-				s.ParseSlide(currentCommand.String(), slideTypeCodeblock)
+				s.ParseSlide(currentCommand.String(), types.SlideTypeCodeblock)
 				insideCodeBlock = false
 				currentCommand.Reset()
 			} else {
@@ -173,15 +175,14 @@ func (s *server) ParseSlides(contents []string, startIdx int) (err error) {
 		switch {
 		case trimmed == "":
 		case strings.HasPrefix(trimmed, "$ "):
-			s.ParseSlide(strings.TrimPrefix(trimmed, "$ "), slideTypeCommand)
+			s.ParseSlide(strings.TrimPrefix(trimmed, "$ "), types.SlideTypeCommand)
 		default:
-			s.ParseSlide(parsePlainSlide(trimmed), slideTypePlain)
+			s.ParseSlide(parsePlainSlide(trimmed), types.SlideTypePlain)
 		}
 	}
 
 	return
 }
-
 func (s *server) SplitContent(commandsFile string) (slideContent []string, err error) {
 	contents, err := os.ReadFile(commandsFile)
 	if err != nil {

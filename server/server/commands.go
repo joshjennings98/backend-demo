@@ -42,7 +42,7 @@ type commandManager struct {
 	logger        *slog.Logger
 }
 
-func newCommandManager(logger *slog.Logger) *commandManager {
+func newCommandManager(logger *slog.Logger) ICommandManager {
 	return &commandManager{
 		logger: logger,
 	}
@@ -86,7 +86,27 @@ func runCommand(cmd string) error {
 	return nil
 }
 
-func (c *commandManager) stopCurrentCommand() (err error) {
+func (c *commandManager) IsRunning() bool {
+	return c.running.Load()
+}
+
+func (c *commandManager) SetRunning(b bool) {
+	c.running.Store(b)
+}
+
+func (c *commandManager) GetWebsocketConnection() *websocket.Conn {
+	return c.ws
+}
+
+func (c *commandManager) SetWebsocketConnection(ws *websocket.Conn) {
+	c.ws = ws
+}
+
+func (c *commandManager) SetCancelCommand(cancel context.CancelFunc) {
+	c.cancelCommand = cancel
+}
+
+func (c *commandManager) StopCurrentCommand() (err error) {
 	if c.cancelCommand != nil {
 		c.cancelCommand()
 		c.cancelCommand = nil
@@ -95,7 +115,7 @@ func (c *commandManager) stopCurrentCommand() (err error) {
 	return
 }
 
-func (c *commandManager) termClear() (err error) {
+func (c *commandManager) TermClear() (err error) {
 	if c.ws == nil {
 		return errors.New("websocket connection not yet ready")
 	}
@@ -105,7 +125,7 @@ func (c *commandManager) termClear() (err error) {
 	return nil
 }
 
-func (c *commandManager) termMessage(message []byte) error {
+func (c *commandManager) TermMessage(message []byte) error {
 	if c.ws == nil {
 		return errors.New("websocket connection not yet ready")
 	}
@@ -116,7 +136,7 @@ func (c *commandManager) termMessage(message []byte) error {
 	return nil
 }
 
-func (c *commandManager) executeCommand(ctx context.Context, command string) (err error) {
+func (c *commandManager) ExecuteCommand(ctx context.Context, command string) (err error) {
 	cmd := exec.CommandContext(ctx, "sh", "-c", command)
 
 	stdoutPipe, err := cmd.StdoutPipe()
@@ -154,23 +174,23 @@ func (c *commandManager) executeCommand(ctx context.Context, command string) (er
 				return nil // command complete
 			}
 
-			if err := c.termMessage(buffer[:n]); err != nil {
+			if err := c.TermMessage(buffer[:n]); err != nil {
 				return err
 			}
 		}
 	}
 }
 
-func (c *commandManager) startCommand(command string) (err error) {
-	if err = c.stopCurrentCommand(); err != nil {
+func (c *commandManager) StartCommand(command string) (err error) {
+	if err = c.StopCurrentCommand(); err != nil {
 		return
 	}
 
 	if c.ws == nil {
-		return errors.New("websocket connection not yet ready")
+		return
 	}
 
-	if err := c.termClear(); err != nil {
+	if err := c.TermClear(); err != nil {
 		c.logger.Warn("error sending clear to websocket:", "error", err.Error())
 	}
 
@@ -179,7 +199,7 @@ func (c *commandManager) startCommand(command string) (err error) {
 
 	go func(ctx context.Context, command string) {
 		c.logger.Info("starting command", "command", command)
-		if err := c.executeCommand(ctx, command); err != nil {
+		if err := c.ExecuteCommand(ctx, command); err != nil {
 			c.logger.Error("error executing command", "command", command, "error", err.Error())
 			return
 		}

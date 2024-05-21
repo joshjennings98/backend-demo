@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/joshjennings98/backend-demo/server/types"
 	"github.com/maragudk/gomponents/html"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,7 +22,7 @@ func TestPrevSlide(t *testing.T) {
 
 func TestContentDiv(t *testing.T) {
 	t.Run("plain slide", func(t *testing.T) {
-		testSlide := slide{id: 0, content: "this is a some text", slideType: slideTypePlain}
+		testSlide := types.Slide{ID: 0, Content: "this is a some text", SlideType: types.SlideTypePlain}
 		var actual strings.Builder
 		err := contentDiv(3, 10, testSlide, false).Render(&actual)
 		require.NoError(t, err)
@@ -30,7 +31,7 @@ func TestContentDiv(t *testing.T) {
 	})
 
 	t.Run("code slide", func(t *testing.T) {
-		testSlide := slide{id: 0, content: "<pre><code>this is some code</code></pre>", slideType: slideTypeCodeblock}
+		testSlide := types.Slide{ID: 0, Content: "<pre><code>this is some code</code></pre>", SlideType: types.SlideTypeCodeblock}
 		var actual strings.Builder
 		err := contentDiv(3, 10, testSlide, false).Render(&actual)
 		require.NoError(t, err)
@@ -39,7 +40,7 @@ func TestContentDiv(t *testing.T) {
 	})
 
 	t.Run("comand slide", func(t *testing.T) {
-		testSlide := slide{id: 0, content: "this is a command", slideType: slideTypeCommand}
+		testSlide := types.Slide{ID: 0, Content: "this is a command", SlideType: types.SlideTypeCommand}
 		var actual strings.Builder
 		err := contentDiv(3, 10, testSlide, false).Render(&actual)
 		require.NoError(t, err)
