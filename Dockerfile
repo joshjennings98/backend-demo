@@ -2,8 +2,9 @@ FROM golang:1.22.0 as build
 
 WORKDIR /build
 ADD server server
+ADD cli cli
 
-WORKDIR /build/server
+WORKDIR /build/cli
 RUN go mod tidy
 RUN go build -o /output/backend-demo
 

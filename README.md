@@ -74,9 +74,5 @@ Alternatively use the arrow keys for forward and back and the space bar to execu
 
 ## Todo
 
-[ ] Add support for release CI
-    [ ] Add nix flake
-    [x] Add .goreleaser.yml
-    [x] Add Dockerfile
-[ ] Add code coverage badge?
-[ ] Split into proper CLI 
+[ ] Release CI
+[ ] Release built binaries to GitHub
