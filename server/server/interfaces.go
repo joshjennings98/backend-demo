@@ -11,11 +11,11 @@ import (
 
 type IPresentation interface {
 	Initialise(ctx context.Context) error
-	SplitContent(commandsFile string) (slideContent []string, err error)
-	ParsePreCommands(contents []string) (i int, err error)
+	SplitContent(commandsFile string) (preCommands, slideContent []string, err error)
+	ParsePreCommands(contents []string) (err error)
 	GetPreCommands() []string
-	ParseSlides(contents []string, startIdx int) (err error)
-	ParseSlide(content string, t types.SlideType)
+	ParseSlides(contents []string) (err error)
+	ParseSlide(content string)
 	GetSlide(idx int) types.Slide
 	GetSlideCount() int
 }

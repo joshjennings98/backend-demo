@@ -7,6 +7,7 @@ require (
 	github.com/maragudk/gomponents v0.20.1
 	github.com/maragudk/gomponents-htmx v0.4.0
 	github.com/stretchr/testify v1.9.0
+	github.com/yuin/goldmark v1.4.13
 	go.uber.org/mock v0.4.0
 )
 

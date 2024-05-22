@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/joshjennings98/backend-demo/server/types"
 	"github.com/maragudk/gomponents"
@@ -16,8 +17,11 @@ func gomponentsIfElse(condition bool, ifBranch, elseBranch gomponents.Node) gomp
 	return elseBranch
 }
 
-func cleanedCommandGomponent(command string) gomponents.Node {
-	return html.P(gomponents.Raw(command))
+func cleanedCommandGomponent(command string, slideType types.SlideType) gomponents.Node {
+	if slideType != types.SlideTypeCommand {
+		return gomponents.Raw(strings.TrimSpace(command))
+	}
+	return html.P(gomponents.Raw(strings.TrimSpace(command)))
 }
 
 func indexHTML(content gomponents.Node) gomponents.Node {
@@ -77,7 +81,7 @@ func contentDiv(slideIdx, totalSlides int, command types.Slide, isCmdRunning boo
 					html.Class("command-string"),
 					html.Class("text-string"),
 				),
-				cleanedCommandGomponent(command.Content),
+				cleanedCommandGomponent(command.Content, command.SlideType),
 			),
 		),
 		html.Div(
@@ -123,6 +127,7 @@ func runningButton(idx int, isCmdRunning bool) gomponents.Node {
 			hx.Get(fmt.Sprintf("/commands/%v/status", idx)),
 			hx.Trigger("every 100ms"),
 			hx.Target("#execute-button"),
+			hx.Swap("outerHTML"),
 			stopButton(idx),
 		)
 	}

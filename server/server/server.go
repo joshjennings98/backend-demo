@@ -13,6 +13,10 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/extension"
+	"github.com/yuin/goldmark/renderer/html"
+
 	"github.com/joshjennings98/backend-demo/server/types"
 )
 
@@ -27,43 +31,27 @@ const (
 )
 
 var (
-	hrRegex                = regexp.MustCompile(`^\-+`)
-	plainSlideReplacements = []struct {
-		regex       *regexp.Regexp
-		parseResult func(matches []string) string
-	}{
-
-		{
-			regexp.MustCompile(`^!\[([^\]]*)\]\(([^)]+)\)$`), // only allow image only slides
-			func(matches []string) string {
-				return fmt.Sprintf(`<img src="%v" alt="%v">`, matches[2], matches[1])
-			},
-		},
-		{
-			regexp.MustCompile(`^([^!]*)\[([^\]]*)\]\(([^)]+)\)(.*)$`),
-			func(matches []string) string {
-				return fmt.Sprintf(`%v<a href="%v" target="_blank" rel="noopener noreferrer">%v</a>%v`, matches[1], matches[3], matches[2], matches[4])
-			},
-		},
-		{
-			regexp.MustCompile("^(.*)`([^`]*)`(.*)$"),
-			func(matches []string) string {
-				return fmt.Sprintf(`%v<code>%v</code>%v`, matches[1], matches[2], matches[3])
-			},
-		},
-	}
+	whiteSpaceRegex = regexp.MustCompile(`^[\s\n\r]*$`)
+	md2html         = goldmark.New(
+		goldmark.WithExtensions(extension.GFM),
+		goldmark.WithRendererOptions(
+			html.WithHardWraps(),
+			html.WithXHTML(),
+			html.WithUnsafe(),
+		),
+	)
 )
 
-func parsePlainSlide(content string) (output string) {
-	for i := range plainSlideReplacements {
-		output = plainSlideReplacements[i].regex.ReplaceAllStringFunc(content, func(match string) string {
-			submatches := plainSlideReplacements[i].regex.FindStringSubmatch(match)
-			return plainSlideReplacements[i].parseResult(submatches)
-		})
-		if output != content {
-			return output
-		}
+func parseSlide(content string) (output string) {
+	if strings.HasPrefix(content, "$ ") {
+		return strings.TrimPrefix(content, "$ ")
 	}
+
+	var html strings.Builder
+	if err := md2html.Convert([]byte(content), &html); err == nil {
+		return html.String()
+	}
+
 	return content
 }
 
@@ -87,37 +75,50 @@ func (s *server) GetSlideCount() int {
 	return len(s.slides)
 }
 
-func (s *server) ParsePreCommands(contents []string) (i int, err error) {
-	for i < len(contents) && !hrRegex.MatchString(contents[i]) {
-		s.preCommands = append(s.preCommands, contents[i])
-		i++
-	}
-
-	if i == len(contents) { // no preCommands
-		s.preCommands = []string{}
-		i = 0
-		return
-	}
-
-	i++ // skip the separator
+func (s *server) ParsePreCommands(contents []string) (err error) {
+	s.preCommands = slices.DeleteFunc(contents, func(s string) bool { return whiteSpaceRegex.MatchString(s) })
 	return
 }
 
-func (s *server) ParseSlide(content string, t types.SlideType) {
+func (s *server) ParseSlide(content string) {
+	var slideType types.SlideType
+
+	switch {
+	case whiteSpaceRegex.MatchString(content):
+		return
+	case strings.HasPrefix(content, "```"):
+		slideType = types.SlideTypeCodeblock
+	case strings.HasPrefix(content, "$ "):
+		slideType = types.SlideTypeCommand
+	default:
+		slideType = types.SlideTypePlain
+	}
+
 	s.slides = append(s.slides, types.Slide{
 		ID:        len(s.slides),
-		Content:   content,
-		SlideType: t,
+		Content:   parseSlide(content),
+		SlideType: slideType,
 	})
 }
 
 func (s *server) Initialise(ctx context.Context) (err error) {
 	for _, cmd := range s.GetPreCommands() {
+		cmd = strings.TrimSpace(cmd)
+
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			if strings.HasPrefix("#", cmd) {
+			if strings.HasPrefix(cmd, "#") {
+				continue
+			}
+
+			cmd := varCommandWithComment.ReplaceAllStringFunc(cmd, func(match string) string {
+				submatches := varCommandWithComment.FindStringSubmatch(match)
+				return strings.TrimSpace(fmt.Sprintf("%v", submatches[1]))
+			})
+
+			if whiteSpaceRegex.MatchString(cmd) {
 				continue
 			}
 
@@ -146,56 +147,42 @@ func (s *server) Initialise(ctx context.Context) (err error) {
 	return
 }
 
-func (s *server) ParseSlides(contents []string, startIdx int) (err error) {
-	insideCodeBlock := false
-	var currentCommand strings.Builder
-
-	contents = contents[startIdx:]
-
+func (s *server) ParseSlides(contents []string) (err error) {
 	for i := range contents {
 		line := contents[i]
 		trimmed := strings.TrimSpace(line)
 
-		if strings.HasPrefix(trimmed, "```") {
-			if insideCodeBlock {
-				currentCommand.WriteString("\n</code></pre>")
-				s.ParseSlide(currentCommand.String(), types.SlideTypeCodeblock)
-				insideCodeBlock = false
-				currentCommand.Reset()
-			} else {
-				currentCommand.WriteString(fmt.Sprintf("<pre class='language-%v'><code>", strings.TrimPrefix(trimmed, "```")))
-				insideCodeBlock = true
-			}
-			continue
-		}
-
-		if insideCodeBlock {
-			if currentCommand.Len() > 0 {
-				currentCommand.WriteString("\n")
-			}
-			currentCommand.WriteString(line)
-			continue
-		}
-
-		switch {
-		case trimmed == "":
-		case strings.HasPrefix(trimmed, "$ "):
-			s.ParseSlide(strings.TrimPrefix(trimmed, "$ "), types.SlideTypeCommand)
-		default:
-			s.ParseSlide(parsePlainSlide(trimmed), types.SlideTypePlain)
+		if trimmed != "" {
+			s.ParseSlide(trimmed)
 		}
 	}
 
 	return
 }
-func (s *server) SplitContent(commandsFile string) (slideContent []string, err error) {
+
+func (s *server) SplitContent(commandsFile string) (preCommands, slideContent []string, err error) {
 	contents, err := os.ReadFile(commandsFile)
 	if err != nil {
 		return
 	}
 
-	slideContent = strings.Split(regexp.MustCompile(`\\\s*\n`).ReplaceAllString(string(contents), ""), "\n")
-	slideContent = slices.DeleteFunc(slideContent, func(s string) bool { return s == "" })
+	var preCommandsStr, slideContentStr string
+	preCommandsSplit := regexp.MustCompile(`\n*(\-+)\n+`).FindAllIndex(contents, -1)
+
+	switch {
+	case len(preCommandsSplit) == 0:
+		slideContentStr = string(contents)
+	case len(preCommandsSplit) > 1:
+		err = errors.New("pre commands must be separated from the rest of the presentation by '---' but more than one '---' was found")
+		return
+	default:
+		preCommandsStr = string(contents[:preCommandsSplit[0][0]])
+		slideContentStr = string(contents[preCommandsSplit[0][1]:])
+		preCommands = strings.Split(preCommandsStr, "\n")
+	}
+
+	slideContent = strings.Split(regexp.MustCompile(`\\\s*\n`).ReplaceAllString(slideContentStr, ""), "\n\n")
+	slideContent = slices.DeleteFunc(slideContent, func(s string) bool { return whiteSpaceRegex.MatchString(s) })
 	return
 }
 
@@ -206,18 +193,18 @@ func NewServer(logger *slog.Logger, commandsFile string) (s IPresentationServer,
 		commandManager: newCommandManager(logger),
 	}
 
-	slideContent, err := s.SplitContent(commandsFile)
+	preComamnds, slideContent, err := s.SplitContent(commandsFile)
 	if err != nil {
 		return
 	}
 
-	startIdx, err := s.ParsePreCommands(slideContent)
+	err = s.ParsePreCommands(preComamnds)
 	if err != nil {
 		err = errors.New("could not parse pre-commands")
 		return
 	}
 
-	err = s.ParseSlides(slideContent, startIdx)
+	err = s.ParseSlides(slideContent)
 	if err != nil {
 		err = errors.New("could not parse slides")
 		return
@@ -251,5 +238,5 @@ func (s *server) Start(ctx context.Context) (err error) {
 
 	s.logger.Info("server is running", "host", "http://localhost:8080/presentation")
 
-	return http.ListenAndServe("localhost:8080", mux)
+	return http.ListenAndServe("localhost:8080", mux) //nolint:gosec
 }

@@ -54,8 +54,6 @@ func (s *server) HandlerSlideByIndex(w http.ResponseWriter, r *http.Request) {
 func (s *server) HandlerInit(w http.ResponseWriter, r *http.Request) {
 	s.logger.Info("attempting to upgrade HTTP to websocket")
 
-	fmt.Println(r.URL)
-
 	if s.commandManager.GetWebsocketConnection() != nil {
 		s.logger.Info("closing existing websocket")
 		if err := s.commandManager.GetWebsocketConnection().Close(); err != nil {

@@ -23,8 +23,9 @@ const (
 )
 
 var (
-	varPattern        = regexp.MustCompile(`^\w+=\w+$`)
-	varCommandPattern = regexp.MustCompile(`^(\w+)=(\$\((.+)\))$`)
+	varPattern            = regexp.MustCompile(`^\w+=\w+$`)
+	varCommandPattern     = regexp.MustCompile(`^(\w+)=(\$\((.+)\))$`)
+	varCommandWithComment = regexp.MustCompile(`^(.*)#(.*)$`)
 
 	upgrader = websocket.Upgrader{
 		ReadBufferSize:  terminalBufferSize,
@@ -120,7 +121,7 @@ func (c *commandManager) TermClear() (err error) {
 		return errors.New("websocket connection not yet ready")
 	}
 	if err := c.ws.WriteMessage(websocket.TextMessage, []byte("\033[2J\033[H")); err != nil {
-		return fmt.Errorf("Error sending clear to websocket: %v", err.Error())
+		return fmt.Errorf("error sending clear to websocket: %v", err.Error())
 	}
 	return nil
 }
@@ -129,9 +130,9 @@ func (c *commandManager) TermMessage(message []byte) error {
 	if c.ws == nil {
 		return errors.New("websocket connection not yet ready")
 	}
-	messageStr := strings.ReplaceAll(strings.TrimPrefix(string(message), "sh: line 1: "), "\n", "\n\r")
+	messageStr := strings.ReplaceAll(strings.TrimPrefix(strings.TrimPrefix(string(message), "sh: line 1: "), "sh: 1: "), "\n", "\n\r")
 	if err := c.ws.WriteMessage(websocket.TextMessage, []byte(messageStr)); err != nil {
-		return fmt.Errorf("Error sending clear to websocket: %v", err.Error())
+		return fmt.Errorf("error sending clear to websocket: %v", err.Error())
 	}
 	return nil
 }

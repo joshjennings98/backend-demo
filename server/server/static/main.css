@@ -17,16 +17,31 @@ select, button {
     padding-left: 10px;
 }
 
+#execute-button {
+    margin-left: 10vw;
+}
+
 #terminal {
     padding-right: 15px;
     max-height: 65vh;
+    max-width: 80vw;
     overflow-x: hidden;
     overflow-y: scroll;
+    margin-inline: auto;
 }
 
 img {
     max-height: 80vh;
     min-height: 80vh;
+}
+
+iframe {
+    height: 80vh;
+    width: 80vw;
+}
+
+ul li, ol li {
+    padding-bottom: 20px;
 }
 
 .command-string {
