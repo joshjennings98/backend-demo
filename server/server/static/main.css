@@ -1,0 +1,83 @@
+body {
+    overflow-x: hidden;
+    overflow-y: scroll;
+}
+
+#controls {
+    display: flex;
+    padding-left: 10px;
+}
+
+select, button {
+    margin-top: 10px;
+    height: 25px;
+}
+
+.control {
+    padding-left: 10px;
+}
+
+#execute-button {
+    margin-left: 10vw;
+}
+
+#terminal {
+    padding-right: 15px;
+    max-height: 65vh;
+    max-width: 80vw;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    margin-inline: auto;
+}
+
+img {
+    max-height: 80vh;
+    min-height: 80vh;
+}
+
+iframe {
+    height: 80vh;
+    width: 80vw;
+}
+
+ul li, ol li {
+    padding-bottom: 20px;
+}
+
+.command-string {
+    color: white;
+    background: black;
+    padding: 0px 30px;
+    font-size: 24px;
+    font-family: Monospace;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    max-width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.text-string {
+    box-sizing: border-box;
+    font-size: 36px;
+    font-family: Arial;
+    user-select: none;
+    width: 80%;
+    height: 90%;
+    margin: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+  }
+
+.xterm-screen {
+    padding: 10px;
+}
+
+.hljs {
+    background: none !important;
+}

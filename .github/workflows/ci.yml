@@ -9,17 +9,35 @@ on:
       - main
 
 jobs:
-  test:
+  lint:
+    name: Linting
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-python@v2
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v5
       with:
-        python-version: '3.10'
-    - name: Install dependencies
-      run: |
-        pip install pipenv
-        pipenv install --dev
+        go-version: "1.22.2"
+    - name: Lint Server
+      uses: golangci/golangci-lint-action@v6
+      with:
+        working-directory: server
+        version: v1.58
+    - name: Lint CLI
+      uses: golangci/golangci-lint-action@v6
+      with:
+        working-directory: cli
+        version: v1.58
+
+  test:
+    name: Run Go Tests
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v5
+      with:
+        go-version: "1.22.2"
     - name: Run tests
       run: |
-        pipenv run python -m unittest tests/*
+        cd server
+        go mod tidy
+        go test ./... -cover -v
