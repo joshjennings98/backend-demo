@@ -12,9 +12,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with: 
+          ref: main
 
       - name: Increment tag
         run: |
+          cd backend-demo
           TAG="$(git describe --tags --abbrev=0 | awk -F. '{$(NF-1)+=1; OFS="."; print $1, $2, $3 }')"
           git tag $TAG
           git push origin $TAG
