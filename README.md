@@ -71,8 +71,3 @@ backend-demo -c commands.txt
 Use the mouse button to go forward and back or select a slide via the dropdown menu.
 
 Alternatively use the arrow keys for forward and back and the space bar to execute the command.
-
-## Todo
-
-[ ] Release CI
-[ ] Release built binaries to GitHub
