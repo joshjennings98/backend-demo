@@ -4,10 +4,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/joshjennings98/backend-demo/server/types"
 	"github.com/maragudk/gomponents/html"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/joshjennings98/backend-demo/server/types"
 )
 
 func TestNextSlide(t *testing.T) {

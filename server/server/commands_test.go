@@ -86,7 +86,12 @@ func TestTermClear(t *testing.T) {
 	}))
 	defer server.Close()
 
-	ws, _, err := websocket.DefaultDialer.Dial(strings.Replace(server.URL, "http", "ws", 1), nil)
+	ws, resp, err := websocket.DefaultDialer.Dial(strings.Replace(server.URL, "http", "ws", 1), nil)
+	defer func() {
+		if resp != nil {
+			_ = resp.Body.Close()
+		}
+	}()
 	assert.NoError(t, err)
 	defer ws.Close()
 	commandManager.SetWebsocketConnection(ws)
@@ -106,7 +111,12 @@ func TestTermMessage(t *testing.T) {
 	}))
 	defer server.Close()
 
-	ws, _, err := websocket.DefaultDialer.Dial(strings.Replace(server.URL, "http", "ws", 1), nil)
+	ws, resp, err := websocket.DefaultDialer.Dial(strings.Replace(server.URL, "http", "ws", 1), nil)
+	defer func() {
+		if resp != nil {
+			_ = resp.Body.Close()
+		}
+	}()
 	assert.NoError(t, err)
 	defer ws.Close()
 	commandManager.SetWebsocketConnection(ws)
@@ -125,7 +135,12 @@ func TestExecuteCommand(t *testing.T) {
 		commandManager.SetWebsocketConnection(ws)
 	}))
 
-	ws, _, err := websocket.DefaultDialer.Dial(strings.Replace(server.URL, "http", "ws", 1), nil)
+	ws, resp, err := websocket.DefaultDialer.Dial(strings.Replace(server.URL, "http", "ws", 1), nil)
+	defer func() {
+		if resp != nil {
+			_ = resp.Body.Close()
+		}
+	}()
 	assert.NoError(t, err)
 	defer ws.Close()
 	commandManager.SetWebsocketConnection(ws)
@@ -147,7 +162,12 @@ func TestStartCommand(t *testing.T) {
 		commandManager.SetWebsocketConnection(ws)
 	}))
 
-	ws, _, err := websocket.DefaultDialer.Dial(strings.Replace(server.URL, "http", "ws", 1), nil)
+	ws, resp, err := websocket.DefaultDialer.Dial(strings.Replace(server.URL, "http", "ws", 1), nil)
+	defer func() {
+		if resp != nil {
+			_ = resp.Body.Close()
+		}
+	}()
 	assert.NoError(t, err)
 	defer ws.Close()
 	commandManager.SetWebsocketConnection(ws)
@@ -170,7 +190,12 @@ func TestWebSocketConnection(t *testing.T) {
 	defer server.Close()
 
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
-	ws, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	ws, resp, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	defer func() {
+		if resp != nil {
+			_ = resp.Body.Close()
+		}
+	}()
 	assert.NoError(t, err)
 	defer ws.Close()
 

@@ -8,9 +8,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/joshjennings98/backend-demo/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/joshjennings98/backend-demo/server/types"
 )
 
 func TestNewServer(t *testing.T) {
@@ -34,7 +35,7 @@ func TestNewServer(t *testing.T) {
 			"$ echo $TEST",
 			"```python\ndef main():\n    print(\"hello world\")\n```",
 			"![hyperion](https://upload.wikimedia.org/wikipedia/en/7/73/Hyperion_cover.jpg)",
-			"<iframe>https://www.google.com</iframe>",
+			"<iframe src=\"https://www.google.com\"></iframe>",
 			"$ echo hello world",
 			"$ watch -n 1 date",
 			"this is `some` text",
