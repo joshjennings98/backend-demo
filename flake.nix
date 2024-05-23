@@ -18,7 +18,7 @@
           pname = "backend-demo";
           version = "2.1.0";
           nativeBuildInputs = [ pkgs.pkg-config ];
-          vendorHash = "sha256-ww4dkX/jelGJAICalf4JzqC52ALbKmBMHEP9Bn6YTW0=";
+          vendorHash = "sha256-nltqq35U3j/feW8Q0GhVsNXi7ya+sgu7Ms0xFKIXOy4=";
           src = ./cli;
           postInstall = ''
             ls -R $out
