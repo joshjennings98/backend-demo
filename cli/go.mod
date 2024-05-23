@@ -3,7 +3,7 @@ module github.com/joshjennings98/backend-demo/cli
 go 1.22.2
 
 require (
-	github.com/joshjennings98/backend-demo/server v0.0.0-20240522184519-f4fbcc8aec60
+	github.com/joshjennings98/backend-demo/server v0.0.0-20240523210219-d48188385a42
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
 )
