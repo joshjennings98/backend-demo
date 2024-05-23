@@ -6,7 +6,6 @@ const (
 	SlideTypePlain SlideType = iota
 	SlideTypeCodeblock
 	SlideTypeCommand
-	SlideTypeIframe
 )
 
 type Slide struct {
