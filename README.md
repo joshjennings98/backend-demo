@@ -60,6 +60,32 @@ One line per slide to keep things simple (although you can do multiple lines wit
 
 Another example can be found in [commands.txt](./server/testdata/commands.txt).
 
+## Installation
+
+### Nix Flake
+
+If you are on `nix` then you can do try it out with:
+
+```sh
+nix run github:joshjennings98/backend-demo --no-write-lock-file
+```
+
+Or install it [using flakes](https://nixos.wiki/wiki/Flakes).
+
+### Manual Build
+
+Clone the repository and `cd` into `cli`. Then run:
+
+```sh
+go build . && mv cli /bin/backend-demo
+```
+
+### Releases
+
+Go to the [releases page](https://github.com/joshjennings98/backend-demo/releases) and install one of the releases.
+
+This has not been tests so please raise an issue if they do not work.
+
 ## Usage
 
 Pass it as an argument to `backend-demo`:
