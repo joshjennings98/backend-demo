@@ -1,9 +1,7 @@
 name: Tag and Release
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -17,7 +15,7 @@ jobs:
 
       - name: Increment tag
         run: |
-          TAG="$(git describe --tags --abbrev=0 | awk -F. '{$NF+=1; OFS="."; print $1, $2, $3 }')"
+          TAG="$(git describe --tags --abbrev=0 | awk -F. '{$(NF-1)+=1; OFS="."; print $1, $2, $3 }')"
           git tag $TAG
           git push origin $TAG
       
