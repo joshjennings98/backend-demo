@@ -16,7 +16,7 @@
       packages = {
         default = pkgs.buildGoModule {
           pname = "backend-demo";
-          version = "0.0.10";
+          version = "2.1.0";
           nativeBuildInputs = [ pkgs.pkg-config ];
           vendorHash = "sha256-ww4dkX/jelGJAICalf4JzqC52ALbKmBMHEP9Bn6YTW0=";
           src = ./cli;
