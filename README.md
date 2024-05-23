@@ -84,7 +84,7 @@ go build . && mv cli /bin/backend-demo
 
 Go to the [releases page](https://github.com/joshjennings98/backend-demo/releases) and install one of the releases.
 
-This has not been tests so please raise an issue if they do not work.
+This has not been tested so please [raise an issue](https://github.com/joshjennings98/backend-demo/issues) if the released package doesn't work.
 
 ## Usage
 
