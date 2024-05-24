@@ -17,7 +17,7 @@ import (
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/renderer/html"
 
-	"github.com/joshjennings98/backend-demo/v2/server/types"
+	"github.com/joshjennings98/backend-demo/server/v2/types"
 )
 
 const (

@@ -1,11 +1,11 @@
-module github.com/joshjennings98/backend-demo/v2/cli
+module github.com/joshjennings98/backend-demo/cli/v2
 
 go 1.22.2
 
-replace github.com/joshjennings98/backend-demo/v2/server => ../server
+replace github.com/joshjennings98/backend-demo/server/v2 => ../server
 
 require (
-	github.com/joshjennings98/backend-demo/v2/server v0.0.0-20240523210219-d48188385a42
+	github.com/joshjennings98/backend-demo/server/v2 v2.0.0-20240523210219-d48188385a42
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
 )

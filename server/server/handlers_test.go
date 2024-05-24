@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/joshjennings98/backend-demo/v2/server/mocks"
-	"github.com/joshjennings98/backend-demo/v2/server/types"
+	"github.com/joshjennings98/backend-demo/server/v2/mocks"
+	"github.com/joshjennings98/backend-demo/server/v2/types"
 )
 
 func setupServer(t *testing.T) (*server, *mocks.MockICommandManager) {

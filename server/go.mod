@@ -1,4 +1,4 @@
-module github.com/joshjennings98/backend-demo/v2/server
+module github.com/joshjennings98/backend-demo/server/v2
 
 go 1.22
 
