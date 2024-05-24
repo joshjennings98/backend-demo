@@ -1,9 +1,9 @@
-module github.com/joshjennings98/backend-demo/cli/v2
+module github.com/joshjennings98/backend-demo/backend-demo/v2
 
 go 1.22.2
 
 require (
-	github.com/joshjennings98/backend-demo/server/v2 v2.0.0-20240524105823-519f58f37769
+	github.com/joshjennings98/backend-demo/server/v2 v2.1.1
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
 )
