@@ -25,7 +25,7 @@ jobs:
     - name: Lint CLI
       uses: golangci/golangci-lint-action@v6
       with:
-        working-directory: cli
+        working-directory: backend-demo
         version: v1.58
 
   test:
