@@ -72,6 +72,16 @@ nix run github:joshjennings98/backend-demo --no-write-lock-file
 
 Or install it [using flakes](https://nixos.wiki/wiki/Flakes).
 
+### Go Install
+
+To install using go:
+
+```sh
+go install github.com/joshjennings98/backend-demo/backend-demo/v2@v2.2.0 # or another version
+```
+
+You will need to make sure that `~/go/bin` is on your `PATH`
+
 ### Manual Build
 
 Clone the repository and `cd` into `cli`. Then run:
