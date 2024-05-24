@@ -35,9 +35,9 @@ jobs:
           fi
 
           git tag $TAG
-          git push origin $TAG
-          git push origin server/$TAG
-          git push origin cli/$TAG
+          git tag server/$TAG
+          git tag cli/$TAG
+          git push --tags origin
       
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v5
