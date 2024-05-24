@@ -27,16 +27,16 @@ jobs:
       - name: Increment tag
         run: |
           if [[ "${{ inputs.type }}" == "feature" ]]; then
-            TAG="$(git describe --tags --abbrev=0 | sed 's|server/||g;s|cli/||g' | awk -F. '{$(NF-1)+=1; OFS="."; print $1, $2, 0 }')"
+            TAG="$(git describe --tags --abbrev=0 | sed 's|server/||g;s|cli/||g;s|backend-demo/||g' | awk -F. '{$(NF-1)+=1; OFS="."; print $1, $2, 0 }')"
           elif [[ "${{ inputs.type }}" == "bugfix" ]]; then
-            TAG="$(git describe --tags --abbrev=0 | sed 's|server/||g;s|cli/||g' | awk -F. '{$NF+=1; OFS="."; print $1, $2, $3 }')"
+            TAG="$(git describe --tags --abbrev=0 | sed 's|server/||g;s|cli/||g';s|backend-demo/||g | awk -F. '{$NF+=1; OFS="."; print $1, $2, $3 }')"
           else
             echo "::error ::Invalid release type"
           fi
 
           git tag $TAG
           git tag server/$TAG
-          git tag cli/$TAG
+          git tag backend-demo/$TAG
           git push --tags origin
       
       - name: Run GoReleaser
