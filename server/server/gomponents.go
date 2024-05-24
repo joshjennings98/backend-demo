@@ -8,7 +8,7 @@ import (
 	hx "github.com/maragudk/gomponents-htmx"
 	"github.com/maragudk/gomponents/html"
 
-	"github.com/joshjennings98/backend-demo/server/types"
+	"github.com/joshjennings98/backend-demo/v2/server/types"
 )
 
 func gomponentsIfElse(condition bool, ifBranch, elseBranch gomponents.Node) gomponents.Node {

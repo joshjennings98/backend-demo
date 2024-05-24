@@ -6,7 +6,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/joshjennings98/backend-demo/server/types"
+	"github.com/joshjennings98/backend-demo/v2/server/types"
 )
 
 type IPresentation interface {
@@ -32,7 +32,7 @@ type IPresentationServer interface {
 	HandlerCommandStop(w http.ResponseWriter, r *http.Request)
 }
 
-//go:generate mockgen -destination=../mocks/mock_$GOPACKAGE.go -package=mocks github.com/joshjennings98/backend-demo/server/$GOPACKAGE ICommandManager
+//go:generate mockgen -destination=../mocks/mock_$GOPACKAGE.go -package=mocks github.com/joshjennings98/backend-demo/v2/server/$GOPACKAGE ICommandManager
 
 type ICommandManager interface {
 	IsRunning() bool

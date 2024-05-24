@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/joshjennings98/backend-demo/server/server"
+	"github.com/joshjennings98/backend-demo/v2/server/server"
 )
 
 var commandFile string
