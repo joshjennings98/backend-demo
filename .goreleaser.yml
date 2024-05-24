@@ -1,6 +1,6 @@
 project_name: backend-demo
 builds:
-  - dir: cli
+  - dir: backend-demo
     id: backend-demo
     binary: backend-demo
     env:
