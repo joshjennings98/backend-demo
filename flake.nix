@@ -18,17 +18,8 @@
     let
       pkgs = import nixpkgs {
         inherit system;
-        overlays = [ # overlays allow you to extend or customize Nix packages by modifying or adding packages to the existing nixpkgs set without altering the original source
-          gomod2nix.overlays.default 
-            (final: pre: { # pre represents the package set before any overlays are applied, while final represents the fully applied set, allowing for the addition or modification of packages
-              update = final.writeScriptBin "update" ''
-                #!/usr/bin/env bash
-                ROOT_DIR=$(pwd)
-                while [ ! -f "$ROOT_DIR/flake.nix" ] && [ "$ROOT_DIR" != "/" ]; do ROOT_DIR=$(dirname "$ROOT_DIR"); done # will work from anywhere IN project
-                gomod2nix --dir "$ROOT_DIR/backend-demo" --outdir "$ROOT_DIR"
-              ''; # here we are just writing a script to /bin/ and making it available in the pkgs for later as the package 'update'
-            })
-          ];
+        # overlays allow you to extend or customize nix packages by modifying or adding packages to the existing nixpkgs set without altering the original source
+        overlays = [ gomod2nix.overlays.default ];
       };
     in
     {
@@ -48,7 +39,6 @@
           golangci-lint                        # tool for linting go code
           golangci-lint-langserver             # language server for golangci-lint
           gomod2nix.packages.${system}.default # make the gomod2nix available in the shell
-          update                               # the script from the overlay
         ];
       };
     }
