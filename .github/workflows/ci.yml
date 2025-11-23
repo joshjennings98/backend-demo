@@ -18,15 +18,15 @@ jobs:
         with:
           go-version: "1.25.4"
       - name: Lint Server
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
           working-directory: server
-          version: v1.58
+          version: v2.6
       - name: Lint CLI
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
           working-directory: backend-demo
-          version: v1.58
+          version: v2.6
 
   test:
     name: Run Go Tests
