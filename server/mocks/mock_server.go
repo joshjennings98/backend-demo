@@ -67,20 +67,6 @@ func (mr *MockICommandManagerMockRecorder) CloseWebsocketConnection() *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CloseWebsocketConnection", reflect.TypeOf((*MockICommandManager)(nil).CloseWebsocketConnection))
 }
 
-// GetWebsocketConnection mocks base method.
-func (m *MockICommandManager) GetWebsocketConnection() *websocket.Conn {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetWebsocketConnection")
-	ret0, _ := ret[0].(*websocket.Conn)
-	return ret0
-}
-
-// GetWebsocketConnection indicates an expected call of GetWebsocketConnection.
-func (mr *MockICommandManagerMockRecorder) GetWebsocketConnection() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWebsocketConnection", reflect.TypeOf((*MockICommandManager)(nil).GetWebsocketConnection))
-}
-
 // IsRunning mocks base method.
 func (m *MockICommandManager) IsRunning() bool {
 	m.ctrl.T.Helper()
@@ -93,6 +79,20 @@ func (m *MockICommandManager) IsRunning() bool {
 func (mr *MockICommandManagerMockRecorder) IsRunning() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsRunning", reflect.TypeOf((*MockICommandManager)(nil).IsRunning))
+}
+
+// IsWebsocketConnected mocks base method.
+func (m *MockICommandManager) IsWebsocketConnected() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsWebsocketConnected")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsWebsocketConnected indicates an expected call of IsWebsocketConnected.
+func (mr *MockICommandManagerMockRecorder) IsWebsocketConnected() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsWebsocketConnected", reflect.TypeOf((*MockICommandManager)(nil).IsWebsocketConnected))
 }
 
 // Run mocks base method.

@@ -32,7 +32,7 @@ type IPresentationServer interface {
 //go:generate go tool mockgen -destination=../mocks/mock_$GOPACKAGE.go -package=mocks github.com/joshjennings98/backend-demo/server/v2/$GOPACKAGE ICommandManager
 
 type ICommandManager interface {
-	GetWebsocketConnection() *websocket.Conn
+	IsWebsocketConnected() bool
 	SetWebsocketConnection(ws *websocket.Conn)
 	CloseWebsocketConnection() error
 	Run(commands []string) error

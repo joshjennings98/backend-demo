@@ -118,14 +118,14 @@ func TestCommandManager_WebSocketConnection(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	cm := newCommandManager(logger)
 
-	assert.Nil(t, cm.GetWebsocketConnection())
+	assert.False(t, cm.IsWebsocketConnected())
 
 	_, cleanup := setupWebSocket(t, cm)
 	defer cleanup()
 
-	assert.NotNil(t, cm.GetWebsocketConnection())
+	assert.True(t, cm.IsWebsocketConnected())
 
 	err := cm.CloseWebsocketConnection()
 	require.NoError(t, err)
-	assert.Nil(t, cm.GetWebsocketConnection())
+	assert.False(t, cm.IsWebsocketConnected())
 }

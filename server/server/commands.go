@@ -116,10 +116,10 @@ func (c *commandManager) CloseWebsocketConnection() (err error) {
 	return
 }
 
-func (c *commandManager) GetWebsocketConnection() *websocket.Conn {
+func (c *commandManager) IsWebsocketConnected() bool {
 	c.wsMu.Lock()
 	defer c.wsMu.Unlock()
-	return c.ws
+	return c.ws != nil
 }
 
 func (c *commandManager) Stop() (err error) {
@@ -144,7 +144,7 @@ func (c *commandManager) Clear() (err error) {
 	return c.ws.WriteMessage(websocket.TextMessage, []byte("\033[2J\033[H"))
 }
 
-func (c *commandManager) run(ctx context.Context, ws *websocket.Conn, script string) {
+func (c *commandManager) run(ctx context.Context, script string) {
 	c.running.Store(true)
 	defer func() {
 		c.running.Store(false)
@@ -154,7 +154,7 @@ func (c *commandManager) run(ctx context.Context, ws *websocket.Conn, script str
 
 	cmd := exec.CommandContext(ctx, "sh", "-c", script)
 
-	writer := newWSWriter(ctx, ws, &c.wsMu)
+	writer := newWSWriter(ctx, c.ws, &c.wsMu)
 	cmd.Stdout = writer
 	cmd.Stderr = writer
 
@@ -172,8 +172,7 @@ func (c *commandManager) run(ctx context.Context, ws *websocket.Conn, script str
 func (c *commandManager) Run(commands []string) (err error) {
 	_ = c.Stop()
 
-	ws := c.GetWebsocketConnection()
-	if ws == nil {
+	if !c.IsWebsocketConnected() {
 		return
 	}
 
@@ -185,7 +184,7 @@ func (c *commandManager) Run(commands []string) (err error) {
 	ctx, c.cancel = context.WithCancel(context.Background())
 
 	script := strings.Join(commands, "\n")
-	go c.run(ctx, ws, script)
+	go c.run(ctx, script)
 
 	return
 }
