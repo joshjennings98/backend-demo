@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
@@ -20,15 +21,20 @@ import (
 	"github.com/joshjennings98/backend-demo/server/v2/types"
 )
 
+//go:embed static
+var staticFS embed.FS
+
 const (
-	EndpointIndex         = "GET /presentation"
-	EndpointInit          = "GET /init"
-	EndpointSlideByIndex  = "GET /slides/{id}/"
-	EndpointSlideByQuery  = "GET /slides/"
+	EndpointIndex         = "GET  /presentation"
+	EndpointWebSocket     = "GET  /ws"
+	EndpointSlideByIndex  = "GET  /slides/{id}/"
+	EndpointSlideByQuery  = "GET  /slides/"
 	EndpointCommandStart  = "POST /commands/{id}/start"
-	EndpointCommandStatus = "GET /commands/{id}/status"
+	EndpointCommandStatus = "GET  /commands/{id}/status"
 	EndpointCommandStop   = "POST /commands/{id}/stop"
 )
+
+var ErrSlideIndexOutOfBounds = errors.New("slide index out of bounds")
 
 var (
 	whiteSpaceRegex = regexp.MustCompile(`^[\s\n\r]*$`)
@@ -43,190 +49,157 @@ var (
 )
 
 func parseSlide(content string) (output string) {
-	if strings.HasPrefix(content, "$ ") {
-		return strings.TrimPrefix(content, "$ ")
-	}
-
 	var html strings.Builder
-	if err := md2html.Convert([]byte(content), &html); err == nil {
-		return html.String()
+	err := md2html.Convert([]byte(content), &html)
+	if err == nil {
+		output = html.String()
+	} else {
+		output = content
 	}
 
-	return content
+	return
+}
+
+// parseCommandSlide parses a multi-line command block.
+// Returns displayContent (visible lines) and executeContent (all commands to run).
+// Lines with $! are visible, the last $ line is always visible.
+// All $ and $! lines are executed.
+func parseCommandSlide(content string) (displayContent []string, executeContent []string) {
+	lines := strings.Split(content, "\n")
+	lines = slices.DeleteFunc(lines, func(line string) bool {
+		return strings.TrimSpace(line) == ""
+	})
+
+	for i, line := range lines {
+		switch {
+		case strings.HasPrefix(line, "$! "):
+			cmd := strings.TrimPrefix(line, "$! ")
+			displayContent = append(displayContent, cmd)
+			executeContent = append(executeContent, cmd)
+		case strings.HasPrefix(line, "$ "):
+			cmd := strings.TrimPrefix(line, "$ ")
+			executeContent = append(executeContent, cmd)
+			if i == len(lines)-1 { // the last $ line is always visible
+				displayContent = append(displayContent, cmd)
+			}
+		}
+	}
+
+	return
 }
 
 type server struct {
-	preCommands    []string
+	port           int
 	slides         []types.Slide
 	commandsFile   string
 	commandManager ICommandManager
 	logger         *slog.Logger
 }
 
-func (s *server) GetPreCommands() []string {
-	return s.preCommands
-}
+func (s *server) GetSlide(idx int) (slide types.Slide, err error) {
+	if idx < 0 || idx >= len(s.slides) {
+		err = ErrSlideIndexOutOfBounds
+		return
+	}
 
-func (s *server) GetSlide(idx int) types.Slide {
-	return s.slides[idx]
+	slide = s.slides[idx]
+	return
 }
 
 func (s *server) GetSlideCount() int {
 	return len(s.slides)
 }
 
-func (s *server) ParsePreCommands(contents []string) (err error) {
-	s.preCommands = slices.DeleteFunc(contents, func(s string) bool { return whiteSpaceRegex.MatchString(s) })
+func isCommand(content string) (isCommand bool) {
+	for line := range strings.SplitSeq(content, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "$ ") || strings.HasPrefix(line, "$! ") {
+			isCommand = true
+			return
+		}
+	}
+
 	return
 }
 
 func (s *server) ParseSlide(content string) {
-	var slideType types.SlideType
+	if whiteSpaceRegex.MatchString(content) {
+		return
+	}
+
+	slide := types.Slide{
+		ID: len(s.slides),
+	}
 
 	switch {
-	case whiteSpaceRegex.MatchString(content):
-		return
 	case strings.HasPrefix(content, "```"):
-		slideType = types.SlideTypeCodeblock
-	case strings.HasPrefix(content, "$ "):
-		slideType = types.SlideTypeCommand
+		slide.SlideType = types.SlideTypeCodeblock
+		slide.Content = parseSlide(content)
+	case isCommand(content):
+		slide.SlideType = types.SlideTypeCommand
+		displayContent, executeContent := parseCommandSlide(content)
+		slide.Content = strings.Join(displayContent, "\n")
+		slide.ExecuteContent = executeContent
 	default:
-		slideType = types.SlideTypePlain
+		slide.SlideType = types.SlideTypePlain
+		slide.Content = parseSlide(content)
 	}
 
-	s.slides = append(s.slides, types.Slide{
-		ID:        len(s.slides),
-		Content:   parseSlide(content),
-		SlideType: slideType,
-	})
+	s.slides = append(s.slides, slide)
 }
 
-func (s *server) Initialise(ctx context.Context) (err error) {
-	for _, cmd := range s.GetPreCommands() {
-		cmd = strings.TrimSpace(cmd)
-
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			if strings.HasPrefix(cmd, "#") {
-				continue
-			}
-
-			cmd := varCommandWithComment.ReplaceAllStringFunc(cmd, func(match string) string {
-				submatches := varCommandWithComment.FindStringSubmatch(match)
-				return strings.TrimSpace(fmt.Sprintf("%v", submatches[1]))
-			})
-
-			if whiteSpaceRegex.MatchString(cmd) {
-				continue
-			}
-
-			s.logger.Info("running pre-command", "command", cmd)
-
-			switch {
-			case varCommandPattern.MatchString(cmd):
-				if err := setCommandToVar(ctx, cmd); err != nil {
-					err = fmt.Errorf("could not set command to var '%v': %v", cmd, err.Error())
-					return err
-				}
-			case varPattern.MatchString(cmd):
-				if err := setVar(cmd); err != nil {
-					err = fmt.Errorf("could set variable '%v': %v", cmd, err.Error())
-					return err
-				}
-			default:
-				if err := runCommand(ctx, cmd); err != nil {
-					err = fmt.Errorf("could not execute pre-command '%v': %v", cmd, err.Error())
-					return err
-				}
-			}
-		}
-	}
-
-	return
-}
-
-func (s *server) ParseSlides(contents []string) (err error) {
-	for i := range contents {
-		line := contents[i]
+func (s *server) ParseSlides(contents []string) {
+	for _, line := range contents {
 		trimmed := strings.TrimSpace(line)
-
 		if trimmed != "" {
 			s.ParseSlide(trimmed)
 		}
 	}
-
-	return
 }
 
-func (s *server) SplitContent(commandsFile string) (preCommands, slideContent []string, err error) {
+func (s *server) SplitContent(commandsFile string) (slideContent []string, err error) {
 	contents, err := os.ReadFile(commandsFile)
 	if err != nil {
+		err = fmt.Errorf("could not read content from '%v': %w", commandsFile, err)
 		return
 	}
 
-	var preCommandsStr, slideContentStr string
-	preCommandsSplit := regexp.MustCompile(`\n*(\-+)\n+`).FindAllIndex(contents, -1)
+	// handle line continuations (\ at end of line)
+	contentStr := regexp.MustCompile(`\\\s*\n`).ReplaceAllString(string(contents), "")
 
-	switch {
-	case len(preCommandsSplit) == 0:
-		slideContentStr = string(contents)
-	case len(preCommandsSplit) > 1:
-		err = errors.New("pre commands must be separated from the rest of the presentation by '---' but more than one '---' was found")
-		return
-	default:
-		preCommandsStr = string(contents[:preCommandsSplit[0][0]])
-		slideContentStr = string(contents[preCommandsSplit[0][1]:])
-		preCommands = strings.Split(preCommandsStr, "\n")
-	}
-
-	slideContent = strings.Split(regexp.MustCompile(`\\\s*\n`).ReplaceAllString(slideContentStr, ""), "\n\n")
+	// split by double newlines to get slide blocks
+	slideContent = strings.Split(contentStr, "\n\n")
 	slideContent = slices.DeleteFunc(slideContent, func(s string) bool { return whiteSpaceRegex.MatchString(s) })
 	return
 }
 
-func NewServer(logger *slog.Logger, commandsFile string) (s IPresentationServer, err error) {
+func NewServer(logger *slog.Logger, port int, commandsFile string) (s IPresentationServer, err error) {
+	if port == 0 {
+		port = 8080
+	}
+
 	s = &server{
+		port:           port,
 		logger:         logger,
 		commandsFile:   commandsFile,
 		commandManager: newCommandManager(logger),
 	}
 
-	preComamnds, slideContent, err := s.SplitContent(commandsFile)
+	content, err := s.SplitContent(commandsFile)
 	if err != nil {
+		err = fmt.Errorf("could not split content of file '%v': %w", commandsFile, err)
 		return
 	}
 
-	err = s.ParsePreCommands(preComamnds)
-	if err != nil {
-		err = errors.New("could not parse pre-commands")
-		return
-	}
-
-	err = s.ParseSlides(slideContent)
-	if err != nil {
-		err = errors.New("could not parse slides")
-		return
-	}
-
+	s.ParseSlides(content)
 	return
 }
 
-//go:embed static
-var staticFS embed.FS
-
-func (s *server) Start(ctx context.Context) (err error) {
-	err = s.Initialise(ctx)
-	if err != nil {
-		s.logger.Error("could not initialise server", "error", err.Error())
-		return err
-	}
-
+func (s *server) Start(ctx context.Context) error {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc(EndpointIndex, s.HandlerIndex)
-	mux.HandleFunc(EndpointInit, s.HandlerInit)
+	mux.HandleFunc(EndpointWebSocket, s.HandlerWebSocket)
 	mux.HandleFunc(EndpointSlideByIndex, s.HandlerSlideByIndex)
 	mux.HandleFunc(EndpointSlideByQuery, s.HandlerSlideByQuery)
 	mux.HandleFunc(EndpointCommandStart, s.HandlerCommandStart)
@@ -236,7 +209,18 @@ func (s *server) Start(ctx context.Context) (err error) {
 	mux.HandleFunc("/static/", http.FileServerFS(staticFS).ServeHTTP)
 	mux.HandleFunc("/", http.FileServer(http.Dir(filepath.Dir(s.commandsFile))).ServeHTTP)
 
-	s.logger.Info("server is running", "host", "http://localhost:8080/presentation")
+	s.logger.Info("server is running", "host", fmt.Sprintf("http://localhost:%v/presentation", s.port))
 
-	return http.ListenAndServe("localhost:8080", mux) //nolint:gosec
+	server := &http.Server{
+		Addr:              fmt.Sprintf("localhost:%v", s.port),
+		Handler:           mux,
+		ReadHeaderTimeout: 3 * time.Second, // https://deepsource.com/directory/go/issues/GO-S2112
+	}
+
+	go func() {
+		<-ctx.Done()
+		_ = server.Shutdown(context.Background())
+	}()
+
+	return server.ListenAndServe()
 }

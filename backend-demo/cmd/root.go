@@ -12,11 +12,17 @@ import (
 	"github.com/joshjennings98/backend-demo/server/v2/server"
 )
 
-var commandFile string
+var (
+	commandFile string
+	port        int
+)
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&commandFile, "command", "c", "", "Command file to use the presentation")
+	rootCmd.PersistentFlags().IntVarP(&port, "port", "p", 8080, "Port to run server on")
+
 	_ = viper.BindPFlag("command", rootCmd.PersistentFlags().Lookup("command"))
+	_ = viper.BindPFlag("port", rootCmd.PersistentFlags().Lookup("port"))
 }
 
 var rootCmd = &cobra.Command{
@@ -31,7 +37,7 @@ var rootCmd = &cobra.Command{
 
 		logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-		s, err := server.NewServer(logger, commandFile)
+		s, err := server.NewServer(logger, port, commandFile)
 		if err != nil {
 			return
 		}

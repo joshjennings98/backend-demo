@@ -1,6 +1,8 @@
 module github.com/joshjennings98/backend-demo/backend-demo/v2
 
-go 1.22.2
+go 1.25
+
+replace github.com/joshjennings98/backend-demo/server/v2 => ../server
 
 require (
 	github.com/joshjennings98/backend-demo/server/v2 v2.1.1
