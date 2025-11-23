@@ -1,6 +1,6 @@
 module github.com/joshjennings98/backend-demo/server/v2
 
-go 1.25
+go 1.25.4
 
 tool go.uber.org/mock/mockgen
 
