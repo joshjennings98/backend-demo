@@ -16,9 +16,9 @@
       packages = {
         default = pkgs.buildGoModule {
           pname = "backend-demo";
-          version = "2.2.0";
+          version = "2.3.0";
           nativeBuildInputs = [ pkgs.pkg-config ];
-          vendorHash = "sha256-vq9YL7fOdXqzZMAwsPqRBzb2dU+MwPxLGDHcfrOP3kg=";
+          vendorHash = "sha256-lL14bXiQqxIZYIrZC7PxmseWKRYNB8MJ+x33lHMOflA=";
           src = ./backend-demo;
           meta = {
             description = "Demonstrate backend projects with the power of Go and HTMX";
