@@ -1,6 +1,8 @@
 module github.com/joshjennings98/backend-demo/server/v2
 
-go 1.22
+go 1.25.4
+
+tool go.uber.org/mock/mockgen
 
 require (
 	github.com/gorilla/websocket v1.5.1
@@ -14,6 +16,9 @@ require (
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	golang.org/x/mod v0.11.0 // indirect
 	golang.org/x/net v0.25.0 // indirect
+	golang.org/x/sys v0.20.0 // indirect
+	golang.org/x/tools v0.2.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

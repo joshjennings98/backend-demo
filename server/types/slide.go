@@ -9,7 +9,8 @@ const (
 )
 
 type Slide struct {
-	ID        int
-	Content   string
-	SlideType SlideType
+	ID             int
+	Content        string
+	ExecuteContent []string
+	SlideType      SlideType
 }

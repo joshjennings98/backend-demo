@@ -20,10 +20,9 @@ func setupServer(t *testing.T) (*server, *mocks.MockICommandManager) {
 	mockCommandManager := mocks.NewMockICommandManager(ctrl)
 
 	return &server{
-		preCommands: []string{},
 		slides: []types.Slide{
-			{ID: 1, Content: "hello", SlideType: types.SlideTypePlain},
-			{ID: 2, Content: "world", SlideType: types.SlideTypePlain},
+			{ID: 0, Content: "hello", SlideType: types.SlideTypePlain},
+			{ID: 1, Content: "echo world", ExecuteContent: []string{"echo world"}, SlideType: types.SlideTypeCommand},
 		},
 		commandManager: mockCommandManager,
 		logger:         slog.New(slog.NewTextHandler(os.Stdout, nil)),
@@ -74,12 +73,12 @@ func TestHandlerSlideByIndex(t *testing.T) {
 
 	cmdManager.
 		EXPECT().
-		TermClear().
+		Stop().
 		Return(nil)
 
 	cmdManager.
 		EXPECT().
-		StopCurrentCommand().
+		Clear().
 		Return(nil)
 
 	mux := http.NewServeMux()
@@ -106,17 +105,17 @@ func TestHandlerSlideByIndex(t *testing.T) {
 	})
 }
 
-func TestHandlerInit_BadRequest_NoWebSocket(t *testing.T) {
+func TestHandlerWebSocket_BadRequest_NoUpgrade(t *testing.T) {
 	s, cmdManager := setupServer(t)
 
-	handler := http.HandlerFunc(s.HandlerInit)
+	handler := http.HandlerFunc(s.HandlerWebSocket)
 
 	cmdManager.
 		EXPECT().
-		GetWebsocketConnection().
+		CloseWebsocketConnection().
 		Return(nil)
 
-	req, err := http.NewRequest("GET", "/init", nil)
+	req, err := http.NewRequest("GET", "/ws", nil)
 	require.NoError(t, err)
 
 	rr := httptest.NewRecorder()
@@ -133,7 +132,7 @@ func TestHandlerCommandStart(t *testing.T) {
 
 	cmdManager.
 		EXPECT().
-		StartCommand(gomock.Any()).
+		Run(gomock.Any()).
 		Return(nil)
 
 	t.Run("Valid path parameter", func(t *testing.T) {
@@ -219,7 +218,7 @@ func TestHandlerCommandStop(t *testing.T) {
 
 	cmdManager.
 		EXPECT().
-		StopCurrentCommand().
+		Stop().
 		Return(nil)
 
 	t.Run("Valid path parameter", func(t *testing.T) {

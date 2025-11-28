@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -15,195 +14,118 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSetCommandToVar(t *testing.T) {
-	t.Run("good", func(t *testing.T) {
-		err := setCommandToVar(context.Background(), "MYVAR=$(echo hello)")
-		assert.NoError(t, err)
-		value, exists := os.LookupEnv("MYVAR")
-		assert.True(t, exists)
-		assert.Equal(t, "hello", value)
-	})
-
-	t.Run("context cancel", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel()
-		err := setCommandToVar(ctx, "MYVAR2=$(sleep 5; echo hello)")
-		assert.ErrorContains(t, err, "canceled")
-		_, exists := os.LookupEnv("MYVAR2")
-		assert.False(t, exists)
-	})
-}
-
-func TestSetVar(t *testing.T) {
-	err := setVar("MYVAR=hello")
-	assert.NoError(t, err)
-	value, exists := os.LookupEnv("MYVAR")
-	assert.True(t, exists)
-	assert.Equal(t, "hello", value)
-}
-
-func TestRunCommand(t *testing.T) {
-	t.Run("good", func(t *testing.T) {
-		err := runCommand(context.Background(), "echo hello")
-		assert.NoError(t, err)
-	})
-
-	t.Run("bad", func(t *testing.T) {
-		err := runCommand(context.Background(), "adsadsa")
-		assert.ErrorContains(t, err, "error executing command")
-	})
-
-	t.Run("context cancel", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel()
-		err := runCommand(ctx, "sleep 5")
-		assert.ErrorContains(t, err, "canceled")
-	})
-}
-
-func TestStopCurrentCommand(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	commandManager := newCommandManager(logger)
-	ctx, cancel := context.WithCancel(context.Background())
-	commandManager.SetCancelCommand(cancel)
-	go func() { _ = commandManager.ExecuteCommand(ctx, "sleep 5") }()
-	time.Sleep(1 * time.Second) // Ensure the command is running
-	assert.True(t, commandManager.IsRunning())
-
-	err := commandManager.StopCurrentCommand()
-	assert.NoError(t, err)
-	assert.False(t, commandManager.IsRunning())
-}
-
-func TestTermClear(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	commandManager := newCommandManager(logger)
+func setupWebSocket(t *testing.T, cm ICommandManager) (ws *websocket.Conn, cleanup func()) {
+	t.Helper()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upgrader := newUpgrader(true)
 		ws, err := upgrader.Upgrade(w, r, nil)
 		assert.NoError(t, err)
-		commandManager.SetWebsocketConnection(ws)
+		cm.SetWebsocketConnection(ws)
 	}))
-	defer server.Close()
-
-	ws, resp, err := websocket.DefaultDialer.Dial(strings.Replace(server.URL, "http", "ws", 1), nil)
-	defer func() {
-		if resp != nil {
-			_ = resp.Body.Close()
-		}
-	}()
-	assert.NoError(t, err)
-	defer ws.Close()
-	commandManager.SetWebsocketConnection(ws)
-
-	err = commandManager.TermClear()
-	assert.NoError(t, err)
-}
-
-func TestTermMessage(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	commandManager := newCommandManager(logger)
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ws, err := upgrader.Upgrade(w, r, nil)
-		assert.NoError(t, err)
-		commandManager.SetWebsocketConnection(ws)
-	}))
-	defer server.Close()
-
-	ws, resp, err := websocket.DefaultDialer.Dial(strings.Replace(server.URL, "http", "ws", 1), nil)
-	defer func() {
-		if resp != nil {
-			_ = resp.Body.Close()
-		}
-	}()
-	assert.NoError(t, err)
-	defer ws.Close()
-	commandManager.SetWebsocketConnection(ws)
-
-	err = commandManager.TermMessage([]byte("test message"))
-	assert.NoError(t, err)
-}
-
-func TestExecuteCommand(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	commandManager := newCommandManager(logger)
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ws, err := upgrader.Upgrade(w, r, nil)
-		assert.NoError(t, err)
-		commandManager.SetWebsocketConnection(ws)
-	}))
-
-	ws, resp, err := websocket.DefaultDialer.Dial(strings.Replace(server.URL, "http", "ws", 1), nil)
-	defer func() {
-		if resp != nil {
-			_ = resp.Body.Close()
-		}
-	}()
-	assert.NoError(t, err)
-	defer ws.Close()
-	commandManager.SetWebsocketConnection(ws)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-
-	err = commandManager.ExecuteCommand(ctx, "echo hello")
-	assert.NoError(t, err)
-}
-
-func TestStartCommand(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	commandManager := newCommandManager(logger)
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ws, err := upgrader.Upgrade(w, r, nil)
-		assert.NoError(t, err)
-		commandManager.SetWebsocketConnection(ws)
-	}))
-
-	ws, resp, err := websocket.DefaultDialer.Dial(strings.Replace(server.URL, "http", "ws", 1), nil)
-	defer func() {
-		if resp != nil {
-			_ = resp.Body.Close()
-		}
-	}()
-	assert.NoError(t, err)
-	defer ws.Close()
-	commandManager.SetWebsocketConnection(ws)
-
-	err = commandManager.StartCommand("echo hello")
-	assert.NoError(t, err)
-}
-
-func TestWebSocketConnection(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	commandManager := newCommandManager(logger)
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ws, err := upgrader.Upgrade(w, r, nil)
-		assert.NoError(t, err)
-		commandManager.SetWebsocketConnection(ws)
-		err = commandManager.StartCommand("echo hello")
-		require.NoError(t, err)
-	}))
-	defer server.Close()
 
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
-	ws, resp, err := websocket.DefaultDialer.Dial(wsURL, nil)
-	defer func() {
-		if resp != nil {
+	ws, resp, err := websocket.DefaultDialer.Dial(wsURL, nil) //nolint:bodyclose // the body is closed in cleanup
+	require.NoError(t, err)
+
+	cleanup = func() {
+		if resp != nil && resp.Body != nil {
 			_ = resp.Body.Close()
 		}
-	}()
-	assert.NoError(t, err)
-	defer ws.Close()
+		_ = ws.Close()
+		server.Close()
+	}
 
-	_, message, err := ws.ReadMessage()
-	assert.NoError(t, err)
-	assert.Contains(t, string(message), "\x1b[2J\x1b[H") // clearing terminal first
+	time.Sleep(10 * time.Millisecond)
+	return
+}
 
-	_, message, err = ws.ReadMessage()
+func TestCommandManager_Stop(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	cm := newCommandManager(logger)
+
+	_, cleanup := setupWebSocket(t, cm)
+	defer cleanup()
+
+	// start a long-running command
+	err := cm.Run([]string{"sleep 10"})
+	require.NoError(t, err)
+
+	time.Sleep(100 * time.Millisecond)
+	require.True(t, cm.IsRunning())
+
+	// stop should cancel the command
+	err = cm.Stop()
 	assert.NoError(t, err)
-	assert.Contains(t, string(message), "hello")
+
+	time.Sleep(100 * time.Millisecond)
+	assert.False(t, cm.IsRunning())
+}
+
+func TestCommandManager_Clear(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	cm := newCommandManager(logger)
+
+	_, cleanup := setupWebSocket(t, cm)
+	defer cleanup()
+
+	err := cm.Clear()
+	assert.NoError(t, err)
+}
+
+func TestCommandManager_Run(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	cm := newCommandManager(logger)
+
+	ws, cleanup := setupWebSocket(t, cm)
+	defer cleanup()
+
+	err := cm.Run([]string{"echo hello"})
+	require.NoError(t, err)
+
+	// read the clear message
+	_, msg, err := ws.ReadMessage()
+	require.NoError(t, err)
+	assert.Contains(t, string(msg), "\033[2J")
+
+	// read the output
+	_, msg, err = ws.ReadMessage()
+	require.NoError(t, err)
+	assert.Contains(t, string(msg), "hello")
+}
+
+func TestCommandManager_RunMultipleCommands(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	cm := newCommandManager(logger)
+
+	ws, cleanup := setupWebSocket(t, cm)
+	defer cleanup()
+
+	// run multiple commands meaning env var should persist
+	err := cm.Run([]string{"export FOO=bar", "echo $FOO"})
+	require.NoError(t, err)
+
+	_, _, err = ws.ReadMessage() // clear
+	require.NoError(t, err)
+
+	// output should contain "bar" since commands run in same shell
+	_, msg, err := ws.ReadMessage()
+	require.NoError(t, err)
+	assert.Contains(t, string(msg), "bar")
+}
+
+func TestCommandManager_WebSocketConnection(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	cm := newCommandManager(logger)
+
+	assert.False(t, cm.IsWebsocketConnected())
+
+	_, cleanup := setupWebSocket(t, cm)
+	defer cleanup()
+
+	assert.True(t, cm.IsWebsocketConnected())
+
+	err := cm.CloseWebsocketConnection()
+	require.NoError(t, err)
+	assert.False(t, cm.IsWebsocketConnected())
 }

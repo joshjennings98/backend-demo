@@ -1,14 +1,9 @@
-TEST=$(echo 345) # comment
-TEST2=123
-# comment won't get run
-echo test
----
-
-this is \ 
+this is \
 a [presentation](http://google.com)
 
 $ echo aaa && sleep 2 && echo bbb
 
+$ TEST=345
 $ echo $TEST
 
 ```python
@@ -20,7 +15,7 @@ def main():
 
 <iframe src="https://www.google.com"></iframe>
 
-$ echo \ 
+$ echo \
 hello \
 world
 
@@ -35,4 +30,7 @@ $ echo {} | jq
 $ adsadads
 
 $ ls -R /
+
+$! echo "visible setup line"
+$ echo "main command"
 
