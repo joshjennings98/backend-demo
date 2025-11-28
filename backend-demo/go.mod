@@ -2,10 +2,8 @@ module github.com/joshjennings98/backend-demo/backend-demo/v2
 
 go 1.25.4
 
-replace github.com/joshjennings98/backend-demo/server/v2 => ../server
-
 require (
-	github.com/joshjennings98/backend-demo/server/v2 v2.1.1
+	github.com/joshjennings98/backend-demo/server/v2 v2.2.1-0.20251128202112-054c990b0a1f
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
 )
