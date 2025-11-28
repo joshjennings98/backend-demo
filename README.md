@@ -32,12 +32,6 @@ Features
 Write a command file `commands.txt` like this:
 
 ```md
-# setup environment here (comments will be ignored)
-VAR=hello # You can set variables
-VAR2=$(echo world) # you can also set them to the output of a command using $()
-echo hello world # or you can just run commands
----
-
 Text only slides are just lines of plain text
 
 ![Specify images like in markdown](https://upload.wikimedia.org/wikipedia/en/7/73/Hyperion_cover.jpg)
@@ -46,14 +40,28 @@ $ echo 'run a command in the same shell as the current presentation process by p
 
 $ echo 'long running commands are also supported' && sleep 5 && echo 'thanks to xterm.js' && sleep 5 && echo 'they will not block the presentation'
 
-$ echo $VAR # This variable was set up earlier
+$ VAR=123
+$ echo $VAR # This variable was set in the previous line but only the last line will be shown
 
-```go
+$! VAR=123
+$ echo $VAR # Unless you add an exclamation mark
+
+` ``go
 func main() {
     fmt.Println("Use fenced code blocks with markdown syntax to get")
     fmt.Println("a block of syntax highlighted code with highlight.js")
 }
-`​``
+` ``
+
+$ echo \
+multi \
+line \
+command \
+support
+
+multiline support is not \
+just for \
+command execution
 ```
 
 One line per slide to keep things simple (although you can do multiple lines with backslashes or `<br>`.
@@ -77,7 +85,7 @@ Or install it [using flakes](https://nixos.wiki/wiki/Flakes).
 To install using go:
 
 ```sh
-go install github.com/joshjennings98/backend-demo/backend-demo/v2@v2.2.0 # or another version
+go install github.com/joshjennings98/backend-demo/backend-demo/v2@v2.3.0 # or another version
 ```
 
 You will need to make sure that `~/go/bin` is on your `PATH`
