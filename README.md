@@ -13,16 +13,17 @@ This allows you to easily demonstrate commands without having to open a terminal
 This application lends itself to a presentation method similar to the [Takahashi method](https://en.wikipedia.org/wiki/Takahashi_method) where you have a concise slides with very little text. The created presentations are more complex than the Taskahashi method but it is still purposefully designed to keep things simple by only having one type of content per slide, be that text, a command output, or something else.
 
 The result is that with this application backend demos should be much easier to create and run whilst also being slightly more engaging.
-Features
+
+## Features
 
 * A presentation is just a simple text file.
-* A slide can contain: text, an executed command, a code block, or an image. The syntax uses markdown.
+* A slide can contain: text, an executed command, code blocks, or images. The syntax uses markdown.
 * Executed commands will stream output to be shown in the slide thanks to [xterm.js](http://xtermjs.org/).
 * The command that is executed is shown above the command output.
-* Shell commands can be executed before the presentation runs allowing for setup before a presentation.
+* Shell commands can be executed before each slide for setup. They can be hidden or not hidden.
 * Code blocks are automatically highlighted using [highlight.js](https://highlightjs.org/).
-* Embed HTML meaning you can include videos or iframes etc.
-* Left click or right arrow to go forwards, right click or left arrow to go backwards.
+* HTML can be embedded meaning you can include videos or iframes etc.
+* Right arrow to go forwards, left arrow to go backwards.
 * Easy to use and share via screen sharing.
 * Styling done via CSS meaning it can be easily reconfigured.
 * Jump to any slide via a drop down menu.
